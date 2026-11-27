@@ -1,9 +1,11 @@
 """Rebuild everything end to end.
 
   python run_pipeline.py              # all steps (needs the downloads described in README)
-  python run_pipeline.py --skip-data  # only prepare_data + train (reuse dataset/ as it is)
+  python run_pipeline.py --skip-data  # only prepare_data + train + playback detector (reuse dataset/ as it is)
 
 Every step is re-runnable: generators skip files that already exist.
+TRAIN_STEPS are exactly the settings of the current model in models/ (trained 2026-11-26, uz / en / ru):
+~20 min data preparation + ~60 min training + ~6 min playback detector on an RTX 4060.
 """
 import os
 import subprocess
@@ -19,16 +21,16 @@ DATA_STEPS = [
     # AI speech: 4 TTS engines + voice cloning
     [PY, "scripts/generate_ai.py", "--engine", "sapi", "--per-voice", "20"],
     [PY, "scripts/generate_ai.py", "--engine", "edge", "--per-lang", "150"],
-    [PY, "scripts/generate_ai.py", "--engine", "gtts", "--per-lang", "60",
-     "--langs", "ru", "tr", "en", "ar", "hi", "zh", "de", "es", "fr"],
+    [PY, "scripts/generate_ai.py", "--engine", "gtts", "--per-lang", "60", "--langs", "uz", "ru", "en"],
     [PY, "scripts/generate_ai.py", "--engine", "piper", "--per-voice", "45"],
     [PY, "scripts/generate_ai.py", "--engine", "xtts", "--per-lang", "40"],
     # AI: voice changers / vocoder made from real voices
     [PY, "scripts/make_fakes.py", "--fraction", "0.3"],
 ]
 TRAIN_STEPS = [
-    [PY, "scripts/prepare_data.py", "--aug", "2", "--max-windows", "3"],
-    [PY, "train.py", "--epochs", "15"],
+    [PY, "scripts/prepare_data.py", "--aug", "2", "--max-windows", "2", "--boost", "3", "--workers", "10"],
+    [PY, "train.py", "--epochs", "12"],
+    [PY, "train_playback.py", "--epochs", "12", "--workers", "10"],
 ]
 
 if __name__ == "__main__":
