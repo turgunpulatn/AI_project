@@ -23,3 +23,6 @@ venv/
 .claude/
 .vscode/
 .idea/
+
+# ---- downloaded tools (cloudflared.exe, ~55 MB) ----
+tools/

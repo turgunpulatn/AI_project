@@ -19,13 +19,17 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$cf = Get-Command cloudflared -ErrorAction SilentlyContinue
-if (-not $cf) {
-    Write-Host ""
-    Write-Host "cloudflared is not installed. Install it once with:" -ForegroundColor Yellow
-    Write-Host "    winget install --id Cloudflare.cloudflared"
-    Write-Host "then open a NEW terminal window and run this script again."
-    exit 1
+$cf = Join-Path $root "tools\cloudflared.exe"           # portable copy (no admin needed)
+if (-not (Test-Path $cf)) {
+    $onPath = Get-Command cloudflared -ErrorAction SilentlyContinue
+    if ($onPath) { $cf = $onPath.Source }
+    else {
+        Write-Host ""
+        Write-Host "cloudflared not found. Either install it:  winget install --id Cloudflare.cloudflared" -ForegroundColor Yellow
+        Write-Host "or download cloudflared-windows-amd64.exe from https://github.com/cloudflare/cloudflared/releases"
+        Write-Host "and save it as tools\cloudflared.exe (no admin needed)."
+        exit 1
+    }
 }
 
 if (-not $Code) { $Code = -join ((1..6) | ForEach-Object { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[(Get-Random -Maximum 32)] }) }
@@ -46,17 +50,27 @@ try {
     if (-not $ok) { throw "VoxCheck did not become ready on port $Port." }
 
     Write-Host "Opening the public HTTPS link..."
-    $tunnel = Start-Process cloudflared -ArgumentList "tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:$Port" `
+    # http2 = plain HTTPS over TCP 443: works on networks that block UDP/QUIC (the default protocol)
+    $tunnel = Start-Process $cf -ArgumentList "tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://127.0.0.1:$Port" `
         -PassThru -NoNewWindow -RedirectStandardError $log
-    $url = $null
-    for ($i = 0; $i -lt 60 -and -not $url; $i++) {
+    $url = $null; $connected = $false
+    for ($i = 0; $i -lt 90 -and -not $connected; $i++) {
         Start-Sleep -Seconds 1
+        if ($tunnel.HasExited) { throw "cloudflared stopped - see $log" }
         if (Test-Path $log) {
-            $m = Select-String -Path $log -Pattern "https://[a-z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
-            if ($m) { $url = $m.Matches[0].Value }
+            if (-not $url) {
+                $m = Select-String -Path $log -Pattern "https://[a-z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
+                if ($m) { $url = $m.Matches[0].Value }
+            }
+            # the link only works once a connection to Cloudflare is registered
+            if ($url -and (Select-String -Path $log -Pattern "Registered tunnel connection" -Quiet)) { $connected = $true }
         }
     }
-    if (-not $url) { throw "cloudflared did not give a link - see $log" }
+    if (-not $connected) { throw "The tunnel did not connect (network blocks Cloudflare?) - see $log" }
+    for ($i = 0; $i -lt 30; $i++) {            # wait until the public link really answers
+        try { $h = Invoke-RestMethod "$url/health" -TimeoutSec 5; if ($h.ok) { break } } catch {}
+        Start-Sleep -Seconds 2
+    }
 
     Write-Host ""
     Write-Host "=================================================================" -ForegroundColor Green

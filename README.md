@@ -39,7 +39,8 @@ git checkout -b <your-name>/<what-you-change>
 
 **Recording voices from your own laptop or phone (no install needed).** The project owner runs:
 ```powershell
-winget install --id Cloudflare.cloudflared      # once
+# once: put cloudflared.exe from https://github.com/cloudflare/cloudflared/releases into tools\ (no admin)
+#       or: winget install --id Cloudflare.cloudflared
 powershell -ExecutionPolicy Bypass -File scripts\share.ps1
 ```
 This prints a temporary `https://….trycloudflare.com` link and a team **access code**. No domain or account is needed.
