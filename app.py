@@ -64,7 +64,7 @@ health_error = self_test()
 
 
 def _read_sentences():
-    p = os.path.join(ROOT, "data", "sentences.txt")
+    p = os.path.join(ROOT, "texts", "sentences.txt")
     return [s.strip() for s in open(p, encoding="utf-8") if s.strip()] if os.path.exists(p) else []
 
 
@@ -223,7 +223,7 @@ def about():
         with open(p, encoding="utf-8") as f:
             exps = list(csv.DictReader(f))
     data = {}
-    p = os.path.join(ROOT, "data", "processed", "manifest.csv")
+    p = os.path.join(ROOT, "dataset", "processed", "manifest.csv")
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             rows = [r for r in csv.DictReader(f) if r["status"] == "ok"]

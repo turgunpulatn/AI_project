@@ -1,7 +1,7 @@
 import os
 
 # --- УКАЗЫВАЕМ ПУТЬ К FFMPEG (ДО ИМПОРТА PYDUB) ---
-os.environ["PATH"] += os.pathsep + os.path.abspath("ffmpeg-9.0.2-essentials_build/bin")
+os.environ["PATH"] += os.pathsep + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "ffmpeg"))
 # -------------------------------------------------
 
 import uuid

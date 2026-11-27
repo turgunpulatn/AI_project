@@ -5,7 +5,7 @@
 * expects <root>/<lang_code>/dev.tar.gz + dev.tsv  (from huggingface.co/datasets/google/fleurs)
 * keeps up to N utterances per language, 2-15 s, balanced over sentences and gender
 * file name:  fl-<lang>-s<sentence_id>__<wav_id>.wav  -> group = sentence (FLEURS has no speaker ids)
-* writes the transcripts to data/tts_texts_<lang>_fleurs.txt so the AI class can be generated
+* writes the transcripts to texts/tts_texts_<lang>_fleurs.txt so the AI class can be generated
   in the same languages with the same kind of sentences.
 """
 import argparse
@@ -80,7 +80,7 @@ def main():
                 n += 1
         total += n
         suffix = "" if a.split == "dev" else "_" + a.split
-        with open(os.path.join(ROOT, "data", f"tts_texts_{lang}_fleurs{suffix}.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(ROOT, "texts", f"tts_texts_{lang}_fleurs{suffix}.txt"), "w", encoding="utf-8") as f:
             f.write("\n".join(sorted(t for t in texts if 3 <= len(t.split()) <= 40)))
         print(f"{code}: {n} utterances from {len(by_sent)} sentences, {len(texts)} texts")
     print(f"total {total} -> dataset/human")

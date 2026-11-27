@@ -5,7 +5,7 @@
 * keeps at most N utterances per speaker (balanced speakers)
 * only utterances of 2-15 s
 * files are named  ls-<speaker>__<utt>.flac  ->  group = speaker
-* writes the transcripts of OTHER utterances to data/tts_texts_en.txt so the AI class
+* writes the transcripts of OTHER utterances to texts/tts_texts_en.txt so the AI class
   can be generated from the same kind of text (content does not leak the label).
 """
 import argparse
@@ -59,10 +59,10 @@ def main():
                 leftover_texts.append(text.capitalize() + ".")
         copied += n
     rnd.shuffle(leftover_texts)
-    with open(os.path.join(ROOT, "data", "tts_texts_en.txt"), "w", encoding="utf-8") as f:
+    with open(os.path.join(ROOT, "texts", "tts_texts_en.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(leftover_texts))
     print(f"copied {copied} utterances from {len(utts)} speakers -> dataset/human")
-    print(f"wrote {len(leftover_texts)} unused transcripts -> data/tts_texts_en.txt")
+    print(f"wrote {len(leftover_texts)} unused transcripts -> texts/tts_texts_en.txt")
 
 
 if __name__ == "__main__":

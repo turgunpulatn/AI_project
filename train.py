@@ -220,7 +220,7 @@ def main():
                     help="skip cross-validation; reuse results/cv_cache.joblib and only redo selection + final model")
     a = ap.parse_args()
 
-    proc = os.path.join(ROOT, "data", "processed")
+    proc = os.path.join(ROOT, "dataset", "processed")
     d = np.load(os.path.join(proc, "dataset.npz"))
     hc, y, group, file_, aug = d["hc"], d["y"], d["group"], d["file_id"], d["aug"]
     lang, attack = d["lang"], d["attack"]
@@ -270,7 +270,7 @@ def main():
         if a.only and eid not in a.only:
             continue
         if kind == "mlp" and emb_src is None:
-            print(f"{eid} skipped (no data/processed/wavlm.npy)")
+            print(f"{eid} skipped (no dataset/processed/wavlm.npy)")
             continue
         t0 = time.time()
         fold_m, ys, ps, fps, rs = [], [], [], [], []
@@ -467,7 +467,7 @@ def finish(rows, oof, k, a, data, emb=None, mel_dev=None):
             joblib.dump(m, path)
         elif r["kind"] == "mlp":
             from voxcheck import ssl
-            src = emb if emb is not None else to_source(np.load(os.path.join(ROOT, "data", "processed", "wavlm.npy")))
+            src = emb if emb is not None else to_source(np.load(os.path.join(ROOT, "dataset", "processed", "wavlm.npy")))
             m = train_mlp(src, y[idx], a.epochs, rows=idx)
             path = os.path.join(ROOT, "models", f"voxcheck_model{suffix}_wavlm.pt")
             torch.save({"kind": "mlp", "dim": ssl.DIM, "ssl": ssl.MODEL_ID, "layers": list(ssl.LAYERS),

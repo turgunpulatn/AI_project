@@ -4,9 +4,9 @@ dataset/human/*, dataset/ai/*   (any audio format)
    -> decode 16 kHz mono -> remove silence -> loudness normalise
    -> K augmented copies per file (replay through speaker / room / phone / codec / noise)   [aug_id > 0]
    -> 2 s windows -> log-mel (for CNN) + hand-crafted features (for classical ML)
-   -> data/processed/mel.npy (float16, written incrementally - never all in RAM)
-      data/processed/dataset.npz (labels, groups, language, attack type, hand-crafted features)
-      data/processed/manifest.csv, results/data_report.md
+   -> dataset/processed/mel.npy (float16, written incrementally - never all in RAM)
+      dataset/processed/dataset.npz (labels, groups, language, attack type, hand-crafted features)
+      dataset/processed/manifest.csv, results/data_report.md
 
 Label  : folder (human=0, ai=1).  Group / language / attack: from the file name, see voxcheck/meta.py.
 
@@ -28,7 +28,7 @@ from voxcheck.meta import ATTACK_NAMES, attack_of, group_of, lang_of, supported 
 
 EXTS = (".wav", ".mp3", ".flac", ".ogg", ".webm", ".m4a", ".opus")
 LABELS = {"human": 0, "ai": 1}
-PROC = os.path.join(ROOT, "data", "processed")
+PROC = os.path.join(ROOT, "dataset", "processed")
 
 
 def process(job):
@@ -216,7 +216,7 @@ def main():
             print("figure skipped:", e)
     open(os.path.join(ROOT, "results", "data_report.md"), "w", encoding="utf-8").write("\n".join(L) + "\n")
     print("\n".join(L[:6]))
-    print(f"\nSaved {N} windows -> data/processed/mel.npy + dataset.npz")
+    print(f"\nSaved {N} windows -> dataset/processed/mel.npy + dataset.npz")
 
 
 if __name__ == "__main__":

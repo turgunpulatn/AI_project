@@ -39,7 +39,7 @@ Results are in the next section.
 
 | Test set | Before | After |
 |---|---|---|
-| Clean AI files (test_ai_mp3 + unseen_ai_test, never trained on) | 18/18 caught | 18/18 caught |
+| Clean AI files (test_audio/, never trained on) | 18/18 caught | 18/18 caught |
 | AI played into the mic, recordings **used in training** (optimistic) | 4/14 caught | 13/14 caught |
 | **New mic recordings never seen in training**: AI | – | 1/4 caught (2/4 with the playback warning) |
 | **New mic recordings never seen in training**: human | – | 7/7 called human, but 3/7 get a false playback warning |

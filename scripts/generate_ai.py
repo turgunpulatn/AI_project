@@ -8,7 +8,7 @@ Engines
   piper  Piper / VITS neural TTS, runs offline            (pip install piper-tts; voices from HF rhasspy/piper-voices)
   xtts   XTTS-v2 zero-shot VOICE CLONING of real speakers (pip install coqui-tts; Coqui CPML licence)
 
-Text: data/sentences.txt + data/tts_texts_<lang>*.txt (FLEURS / LibriSpeech transcripts), so AI and human
+Text: texts/sentences.txt + texts/tts_texts_<lang>*.txt (FLEURS / LibriSpeech transcripts), so AI and human
 say the same kind of sentences in the same languages. Languages without a native voice (ky, tg) are read by
 related-language voices (kk, ru) - like a scammer using the closest available voice.
 
@@ -50,7 +50,7 @@ _UZ = re.compile(r"\b(iltimos|bugun|ertaga|kecha|juda|uchun|biz|bu|va|edi|men|si
 
 
 def _lang_simple(s):
-    """language of a line in the mixed reading script data/sentences.txt (ru / uz / en)"""
+    """language of a line in the mixed reading script texts/sentences.txt (ru / uz / en)"""
     if any("а" <= ch.lower() <= "я" or ch.lower() == "ё" for ch in s):
         return "ru"
     return "uz" if _UZ.search(s) else "en"
@@ -59,10 +59,10 @@ def _lang_simple(s):
 def texts(lang):
     """Sentence pool for a language code."""
     pool = []
-    p = os.path.join(ROOT, "data", "sentences.txt")
+    p = os.path.join(ROOT, "texts", "sentences.txt")
     if os.path.exists(p) and lang in ("en", "ru", "uz"):
         pool += [l.strip() for l in open(p, encoding="utf-8") if l.strip() and _lang_simple(l) == lang]
-    for p in sorted(glob.glob(os.path.join(ROOT, "data", f"tts_texts_{lang}*.txt"))):
+    for p in sorted(glob.glob(os.path.join(ROOT, "texts", f"tts_texts_{lang}*.txt"))):
         if os.path.basename(p)[len(f"tts_texts_{lang}"):][:1] in ("", ".", "_"):
             pool += [l.strip() for l in open(p, encoding="utf-8") if 10 <= len(l.strip()) <= 260]
     return list(dict.fromkeys(pool))

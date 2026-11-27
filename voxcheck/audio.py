@@ -7,6 +7,7 @@ Pipeline:  decode (ffmpeg) -> 16 kHz mono -> trim/remove silence
            -> loudness normalise -> 2 s windows (1 s hop)
            -> log-mel spectrogram (CNN)  |  hand-crafted features (classical ML)
 """
+import glob
 import os
 import shutil
 import subprocess
@@ -28,13 +29,13 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def ffmpeg_bin():
-    local = os.path.join(_ROOT, "ffmpeg-9.0.2-essentials_build", "bin",
-                         "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
-    if os.path.exists(local):
-        return local
+    exe = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+    for local in [os.path.join(_ROOT, "tools", "ffmpeg", exe)] + sorted(glob.glob(os.path.join(_ROOT, "ffmpeg-*", "bin", exe))):
+        if os.path.exists(local):
+            return local
     found = shutil.which("ffmpeg")
     if not found:
-        raise RuntimeError("ffmpeg not found. Put it in ffmpeg-*/bin or on PATH.")
+        raise RuntimeError("ffmpeg not found. Put ffmpeg.exe in tools/ffmpeg/ or install it on PATH.")
     return found
 
 

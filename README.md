@@ -19,10 +19,10 @@ Use `python app.py --port 5050` to choose another port. `http://127.0.0.1:5000/h
 The page records the microphone as plain WAV, so recordings never depend on a browser codec. If ffmpeg fails, the server decodes with libsndfile instead.
 The app loads the saved model from `models/` and never retrains during the demo.
 It runs on CPU, so no GPU is needed for the demo.
-**ffmpeg** is not in the repo (too large). Install it once with `winget install Gyan.FFmpeg` (or put an ffmpeg build in `ffmpeg-*/bin`).
+**ffmpeg** is not in the repo (too large). Install it once with `winget install Gyan.FFmpeg`, or put `ffmpeg.exe` (and `ffplay.exe`) into `tools/ffmpeg/`.
 Without ffmpeg the app still works for microphone recordings and wav / mp3 / ogg / flac uploads, but not for webm / m4a.
 
-**Not in the repo:** `dataset/` (about 27k audio files, plus team voice recordings, which are personal data) and `data/processed/`.
+**Not in the repo:** `dataset/` (about 18k audio files plus processed features; it also holds team voice recordings, which are personal data).
 The trained models in `models/` are included, so the demo runs right after cloning. To retrain, get `dataset/` from the team's shared drive.
 
 Tests: `python tests/test_voxcheck.py` checks decoding, silence and short-clip rejection, augmentation, file-name metadata and all web endpoints.
@@ -147,18 +147,36 @@ Training on an RTX 4060 takes ~70 min for all 10 experiments. Install the CUDA b
 
 ## Project structure
 
+```
+VoxCheck/
+├── app.py               web app (Check a voice · Collect data · How it works)
+├── train.py             10 experiments, model selection, final model
+├── train_playback.py    second model: is the voice played from a device?
+├── run_pipeline.py      one command that rebuilds data + models
+├── requirements.txt
+├── voxcheck/            core code used by both training and the app
+├── scripts/             data collection, evaluation, share.ps1
+├── templates/ static/   web page and demo samples
+├── models/              trained models loaded by the app
+├── results/             experiment tables, figures, reports (for the slides)
+├── texts/               sentences to read aloud and TTS texts
+├── test_audio/          extra test clips never used in training
+├── prototype/           first prototype (random forest on MFCC)
+├── tests/               automated tests
+├── dataset/             all audio + processed features   (local only, not in git)
+└── tools/               ffmpeg + cloudflared              (local only, not in git)
+```
+
 | Path | What |
 |---|---|
-| `voxcheck/audio.py` | shared preprocessing (same in training and app); augmentation incl. **loudspeaker replay + room reverb**, phone line, codecs |
+| `voxcheck/audio.py` | shared preprocessing (same in training and app); augmentation incl. **phone / laptop speaker replay, laptop mic, room reverb**, phone line, codecs |
 | `voxcheck/model.py` | **VoxCNN**: strided stem + 4 conv blocks + mean/max pooling, written from scratch |
 | `voxcheck/meta.py` | file-name conventions → group, language, attack type |
-| `voxcheck/detector.py` | loads the saved model once, scores 2 s windows, returns probability + timeline |
+| `voxcheck/detector.py` | loads the saved models once, scores 2 s windows, returns probability + timeline |
 | `scripts/import_*.py`, `scripts/generate_ai.py`, `scripts/make_fakes.py` | data collection / generation |
 | `scripts/prepare_data.py` | decode → silence removal → loudness norm → augmentation → windows → log-mel + 99 features (streamed to disk) |
-| `train.py` | grouped 5-fold CV of 10 approaches, selection rule, per-language/per-attack report, final training (GPU + mixed precision) |
-| `app.py`, `templates/index.html` | web app: **Check a voice**, **Collect data**, **How it works** |
-| `results/` | `data_report.md`, `experiments.md`, `breakdown.json`, ROC + preprocessing figures |
-| `legacy/` | first prototype (random forest on MFCC) |
+| `scripts/share.ps1` | temporary public HTTPS link so classmates can record (see *Working as a team*) |
+| `results/` | `experiments.md`, `mic_channel.md`, `playback.md`, `data_report.md`, ROC + preprocessing figures, `training_log.txt` |
 
 ## Reused (disclosed)
 

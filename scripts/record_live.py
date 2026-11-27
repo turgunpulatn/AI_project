@@ -31,9 +31,9 @@ def main():
     mics = R.list_mics()
     if not mics:
         sys.exit("no microphone found")
-    sents = [l.strip() for l in open(os.path.join(ROOT, "data", "sentences.txt"), encoding="utf-8") if l.strip()]
+    sents = [l.strip() for l in open(os.path.join(ROOT, "texts", "sentences.txt"), encoding="utf-8") if l.strip()]
     for extra in ("tts_texts_uz_fleurs.txt", "tts_texts_ru_fleurs.txt", "tts_texts_en_fleurs.txt"):
-        p = os.path.join(ROOT, "data", extra)
+        p = os.path.join(ROOT, "texts", extra)
         if os.path.exists(p):
             sents += [l.strip() for l in open(p, encoding="utf-8") if 20 < len(l.strip()) < 140][:60]
     random.shuffle(sents)

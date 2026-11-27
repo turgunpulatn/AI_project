@@ -41,7 +41,7 @@ def build(per_lang=30):
         pool = [f for f in glob.glob(os.path.join(os.path.dirname(ROOT), "downloads_raw", "fleurs", code, "dev", "*.wav"))
                 if os.path.basename(f)[:-4] not in used]
         hum = rnd.sample(pool, min(per_lang, len(pool)))
-        texts = [l.strip() for l in open(os.path.join(ROOT, "data", f"tts_texts_{lang}_fleurs.txt"), encoding="utf-8")
+        texts = [l.strip() for l in open(os.path.join(ROOT, "texts", f"tts_texts_{lang}_fleurs.txt"), encoding="utf-8")
                  if 30 < len(l.strip()) < 200]
         for i, f in enumerate(hum):
             y = A.load_audio(f)
