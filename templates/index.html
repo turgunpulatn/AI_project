@@ -928,7 +928,7 @@ function showResult(d) {
 document.querySelectorAll("#fb button").forEach(b => b.onclick = async () => {
   if (!current) return;
   if (!$("consent").checked) { $("fbStatus").textContent = t("err_consent"); return; }
-  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("label", b.dataset.label); addContrib(fd);
+  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("label", b.dataset.label); fd.append("source", currentIsMic ? "mic" : "file"); addContrib(fd);
   document.querySelectorAll("#fb button").forEach(x => x.disabled = true);
   try {
     const r = await fetch("/feedback", {method: "POST", body: fd}); const d = await r.json();

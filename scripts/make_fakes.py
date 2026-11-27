@@ -18,6 +18,7 @@ import random
 import subprocess
 import sys
 import tempfile
+import zlib
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -84,19 +85,37 @@ def main():
     a = ap.parse_args()
     hum_dir, out_dir = os.path.join(ROOT, "dataset", "human"), os.path.join(ROOT, "dataset", "ai")
     os.makedirs(out_dir, exist_ok=True)
-    done = {f.split("__")[0] + "__" for f in os.listdir(out_dir)
-            if "__" in f and f.split("__")[1].split("-")[0] in dict(ATTACKS)}
     files = sorted(f for f in os.listdir(hum_dir) if f.lower().endswith(EXTS))
+    # Re-runnable: a source that already has a fake is never faked again, and new sources are added only
+    # until `fraction` of all human files is faked (before, every run picked a NEW random 30% once the
+    # file list changed, so fakes kept piling up as the team added recordings).
+    seeds_by_group = {}
+    for f in os.listdir(out_dir):
+        stem = os.path.splitext(f)[0]
+        if "__" in stem and stem.split("__")[1].split("-")[0] in dict(ATTACKS):
+            g, rest = stem.split("__", 1)
+            try:
+                seeds_by_group.setdefault(g, set()).add(int(rest.split("-")[1], 16))
+            except (IndexError, ValueError):
+                pass
+
+    def stable_seed(f):
+        return zlib.crc32(f.encode())
+
+    def already_faked(f):
+        seeds = seeds_by_group.get(group_of(f), ())
+        legacy = int.from_bytes(f.encode()[-8:].ljust(8, b"\0"), "little") % (2 ** 32)   # old naming: legacy ^ index
+        return stable_seed(f) in seeds or any((s ^ legacy) < len(files) for s in seeds)
+
+    faked = {f for f in files if already_faked(f)}
+    n_fakes = sum(len(s) for s in seeds_by_group.values())
+    todo = max(0, int(len(files) * a.fraction) - n_fakes)
+    fresh = sorted((f for f in files if f not in faked), key=stable_seed)[:todo]   # stable, not list-dependent
     rnd = random.Random(123)
-    rnd.shuffle(files)
-    chosen = files[: int(len(files) * a.fraction)]
     names, weights = zip(*ATTACKS)
-    jobs = []
-    for i, f in enumerate(chosen):
-        seed = int.from_bytes(f.encode()[-8:].ljust(8, b"\0"), "little") % (2 ** 32) ^ i
-        jobs.append((os.path.join(hum_dir, f), rnd.choices(names, weights)[0], seed, out_dir))
-    jobs = [j for j in jobs if f"{group_of(j[0])}__{j[1]}-{j[2]:08x}.wav" not in os.listdir(out_dir)]
-    print(f"{len(files)} human files, faking {len(jobs)} ({a.fraction:.0%}), {a.workers} workers")
+    jobs = [(os.path.join(hum_dir, f), rnd.choices(names, weights)[0], stable_seed(f), out_dir) for f in fresh]
+    print(f"{len(files)} human files, {n_fakes} fakes exist, faking {len(jobs)} more "
+          f"(target {a.fraction:.0%}), {a.workers} workers")
     stats, errs = {}, []
     with ProcessPoolExecutor(a.workers) as ex:
         for i, (att, err) in enumerate(ex.map(job, jobs, chunksize=8), 1):
@@ -107,7 +126,6 @@ def main():
                 print(f"  {i}/{len(jobs)}  {stats}")
     if errs:
         print(f"{len(errs)} errors, e.g. {errs[:3]}")
-    _ = done
 
 
 if __name__ == "__main__":

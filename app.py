@@ -190,10 +190,14 @@ def collect():
 
 @app.route("/feedback", methods=["POST"])
 def feedback():
-    """'The answer was wrong' -> keep the analysed recording with the CORRECT label for the next training round."""
+    """'The answer was wrong' -> keep the analysed recording with the CORRECT label for the next training round.
+    The file name records where the audio came from (mic / file): only microphone clips may be used as
+    real "played through a speaker" examples by train_playback.py, an uploaded TTS file was never played."""
     label = request.form.get("label")
     if label not in ("human", "ai"):
         return jsonify({"error": "Unknown label."}), 400
+    source = request.form.get("source")
+    source = source if source in ("mic", "file") else "unknown"
     denied = contributor_error()
     if denied:
         return denied
@@ -204,10 +208,11 @@ def feedback():
                 raise ValueError("Not enough speech in this recording.")
         out_dir = os.path.join(DATASET, label)
         os.makedirs(out_dir, exist_ok=True)
-        name = f"me-feedback__feedback-{uuid.uuid4().hex[:8]}.wav"
+        name = f"me-feedback__feedback-{source}-{uuid.uuid4().hex[:8]}.wav"
         A.save_wav(os.path.join(out_dir, name), y)
         log_consent(f"dataset/{label}/{name}", "feedback")
-        n = sum(1 for d in ("human", "ai") for f in os.listdir(os.path.join(DATASET, d)) if "__feedback-" in f)
+        n = sum(1 for d in ("human", "ai") if os.path.isdir(os.path.join(DATASET, d))
+                for f in os.listdir(os.path.join(DATASET, d)) if "__feedback-" in f)
         return jsonify({"saved": f"dataset/{label}/{name}", "total_feedback": n})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

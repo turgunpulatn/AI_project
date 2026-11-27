@@ -172,6 +172,28 @@ def test_collect_needs_code_and_consent():
             appmod.ACCESS_CODE, appmod.DATASET = old_code, old_dataset
 
 
+def test_feedback_records_source():
+    """Feedback files are tagged mic / file, so train_playback.py never uses an uploaded file as a real replay."""
+    import app as appmod
+    import train_playback as TP
+    c = appmod.app.test_client()
+    old_code, old_dataset = appmod.ACCESS_CODE, appmod.DATASET
+    with tempfile.TemporaryDirectory() as td:
+        appmod.ACCESS_CODE, appmod.DATASET = "", td
+        try:
+            for src in ("mic", "file", "bogus"):
+                r = c.post("/feedback", data={"label": "ai", "source": src, "consent": "yes",
+                                              "audio": (io.BytesIO(_wav_bytes(_tone(3))), "r.wav")},
+                           content_type="multipart/form-data")
+                assert r.status_code == 200, r.get_json()
+                name = r.get_json()["saved"].split("/")[-1]
+                assert f"__feedback-{src if src != 'bogus' else 'unknown'}-" in name, name
+            files = {os.path.basename(f).split("-")[2]: os.path.join(td, "ai", f) for f in os.listdir(os.path.join(td, "ai"))}
+            assert TP.is_mic_feedback(files["mic"]) and not TP.is_mic_feedback(files["file"])
+        finally:
+            appmod.ACCESS_CODE, appmod.DATASET = old_code, old_dataset
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in list(globals().items()):

@@ -54,6 +54,26 @@ def codec_noise(y, rng):
     return np.clip((y + n) * rng.uniform(0.5, 1.5), -1, 1).astype(np.float32)
 
 
+def is_mic_feedback(path):
+    """Feedback clips ('the answer was wrong') can be a microphone recording OR an uploaded file.
+    Only mic clips are real 'played through a speaker' examples; an uploaded TTS file was never played.
+    New clips carry the source in the name (feedback-mic-* / feedback-file-*). Older untagged clips are
+    judged by their noise floor: a microphone always has hiss, an uploaded file has digital silence."""
+    name = os.path.basename(path)
+    if "__feedback-" not in name:
+        return True                                   # not feedback: a normal team mic recording
+    if "__feedback-mic-" in name:
+        return True
+    if "__feedback-file-" in name:
+        return False
+    y = A.load_audio(path)
+    n = len(y) // 320 * 320
+    if n == 0:
+        return False
+    rms = np.sqrt(np.mean(y[:n].reshape(-1, 320) ** 2, axis=1)) + 1e-10
+    return 20 * np.log10(np.percentile(rms, 5) / rms.max()) > -70
+
+
 def make_examples(job):
     """-> list of (window, label, kind) for one source file."""
     path, mode, seed = job
@@ -118,7 +138,8 @@ def main():
     # phone / laptop into the app's microphone (dataset/ai/me-*, except digital voice-changer copies)
     from voxcheck.meta import MANIPULATIONS
     mic_ai = [f for f in files["ai"] if os.path.basename(f).startswith("me-")
-              and os.path.basename(f).split("__")[-1].split("-")[0] not in (MANIPULATIONS - {"feedback"})]  # "feedback" = real mic clip, keep it
+              and os.path.basename(f).split("__")[-1].split("-")[0] not in (MANIPULATIONS - {"feedback"})
+              and is_mic_feedback(f)]
     real = [f for f in allf if "__replay-" in f] + mic_ai
     live = [f for f in files["human"] if os.path.basename(f).startswith(("me-", "human_")) and "__replay-" not in f
             and "__feedback-" not in f]

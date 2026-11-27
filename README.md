@@ -81,7 +81,10 @@ so the CV numbers below are not directly comparable to that run (its table is ke
 cuts the error by about 25% compared with either one alone. The trade-off is the reused, frozen WavLM extractor (94M parameters).
 Analysis takes ~0.1–0.3 s per recording.
 
-**Hard holdout** (`scripts/holdout_eval.py`): 336 clips never seen in training by either model, scored on the same clips.
+**Holdout** (`scripts/holdout_eval.py`): 336 clips never seen in training by either model, scored on the same clips.
+The clips are new, but the 8 Microsoft TTS voices also appear in training, and the "speaker replay" copies use the same
+simulator as the training augmentation. So this shows the model is not just memorizing files. It does **not** show the model
+works on new voices or real devices. The real-microphone test below is the harder test.
 They are unseen FLEURS speakers in uz / ru / en, TTS, voice changers, and simulated speaker replay of everything.
 
 | | before the mic fix | **after the mic fix (current)** |
@@ -110,6 +113,16 @@ Our own VoxCNN (P1) beat the WavLM version (P2): **EER 12.5% on real recordings*
 Before a data bug was fixed, it flagged only 44.4% of them. It accepts 86% of live voices.
 In the app, a **microphone** recording that sounds played-back is shown as "Suspicious — voice played from a device".
 **Limitation:** the phone→mic clips come from a few phones in one room, so more phones, distances and rooms are the next step.
+Also, 55 of the live clips are one team member. Each take is its own CV group, so that voice and room appear in both
+train and test folds, and the 12.5% EER is likely optimistic. Live recordings from more people will fix this.
+Only feedback clips recorded with the **microphone** count as real speaker replays. Uploaded files were never played
+through a speaker, so the app now tags feedback as `feedback-mic-*` or `feedback-file-*`.
+
+### Known limitations of the evaluation
+* FLEURS has no speaker IDs, so human FLEURS clips are grouped by **sentence**. The same FLEURS speaker can be in both
+  train and test folds, which makes CV numbers a little optimistic for the human class.
+* Voice-changer and vocoder fakes are labelled *AI*. For anti-fraud that is the right label (the voice is not
+  what the caller really sounds like), but they are signal-processing fakes, not neural TTS.
 
 ## Data (what we collected / generated)
 
