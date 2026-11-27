@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoxCheck — voice lab</title>
+<style>
+:root{
+  --bg:#efeadf;--panel:#faf8f3;--panel2:#f3efe6;--ink:#1c1b17;--ink2:#3a3830;--muted:#6c675b;--faint:#8d8778;
+  --line:#d6cfbf;--line2:#b9b09c;--grid:rgba(28,27,23,.055);
+  --ai:#d1391f;--ai-bg:#f8e3dc;--human:#1d7a4c;--human-bg:#dcefe3;--warn:#b77900;--warn-bg:#f7ecd2;
+  --led-off:#e3ddd0;--on-ink:#faf8f3;color-scheme:light;
+  --serif:Georgia,Cambria,"Times New Roman",serif;
+  --mono:"Cascadia Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#13120f;--panel:#1b1a16;--panel2:#22201b;--ink:#ece5d5;--ink2:#cfc7b5;--muted:#a19a88;--faint:#857e6e;
+  --line:#353128;--line2:#4d4739;--grid:rgba(236,229,213,.035);
+  --ai:#ff6b4d;--ai-bg:#3b1d15;--human:#4fc78b;--human-bg:#15301f;--warn:#f2b437;--warn-bg:#3a2d10;
+  --led-off:#2c2a23;--on-ink:#13120f;color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#13120f;--panel:#1b1a16;--panel2:#22201b;--ink:#ece5d5;--ink2:#cfc7b5;--muted:#a19a88;--faint:#857e6e;
+  --line:#353128;--line2:#4d4739;--grid:rgba(236,229,213,.035);
+  --ai:#ff6b4d;--ai-bg:#3b1d15;--human:#4fc78b;--human-bg:#15301f;--warn:#f2b437;--warn-bg:#3a2d10;
+  --led-off:#2c2a23;--on-ink:#13120f;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--ink);font:15px/1.55 var(--sans)}
+body{background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+main{max-width:1180px;margin:0 auto;padding:22px 20px 40px}
+button{font-family:inherit}
+.mono{font-family:var(--mono)}
+.hidden{display:none!important}
+
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+.brand{display:flex;align-items:center;gap:14px}
+.eq{display:flex;align-items:flex-end;gap:3px;height:30px;width:30px}
+.eq i{flex:1;background:var(--ai);height:30%;animation:eq 1.1s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.4s;background:var(--ink)}.eq i:nth-child(3){animation-delay:-.8s}.eq i:nth-child(4){animation-delay:-.2s;background:var(--ink)}
+@keyframes eq{0%,100%{height:25%}50%{height:100%}}
+@media (prefers-reduced-motion:reduce){.eq i{animation:none;height:70%}}
+.brand h1{margin:0;font:800 22px/1 var(--mono);letter-spacing:2px}
+.brand h1 span{color:var(--ai)}
+.brand p{margin:3px 0 0;font:italic 15px/1.2 var(--serif);color:var(--muted)}
+.hright{display:flex;align-items:center;gap:10px}
+.langsw{display:flex;border:1.5px solid var(--ink);border-radius:4px;overflow:hidden}
+.langsw button{background:none;border:0;padding:6px 11px;font:700 12px/1 var(--mono);letter-spacing:1px;color:var(--ink);cursor:pointer}
+.langsw button+button{border-left:1.5px solid var(--ink)}
+.langsw button.on{background:var(--ink);color:var(--on-ink)}
+.langsw button:not(.on):hover{background:var(--panel2)}
+.iconbtn{width:32px;height:32px;border-radius:4px;border:1.5px solid var(--ink);background:none;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.iconbtn:hover{background:var(--panel2)}
+.warnbadge{font:12px var(--mono);color:var(--ai);border:1.5px solid var(--ai);border-radius:4px;padding:5px 9px}
+
+/* tabs */
+.tabs{display:flex;gap:22px;flex-wrap:wrap;margin:14px 0 20px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:4px 0;cursor:pointer;font:700 13px/1.4 var(--mono);letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.tab em{font-style:normal;color:var(--faint);margin-right:6px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--ai)}
+
+/* hero */
+.hero{margin:0 0 18px}
+.hero h2{margin:0;font:400 34px/1.15 var(--serif);letter-spacing:-.5px}
+.hero h2 i{color:var(--ai)}
+.hero p{margin:6px 0 0;color:var(--muted);font-size:15px}
+
+/* panels */
+.dash{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px;align-items:start}
+@media(max-width:900px){.dash{grid-template-columns:1fr}.hero h2{font-size:27px}}
+.panel{background:var(--panel);border:1.5px solid var(--ink);border-radius:6px;margin-bottom:18px}
+.dash>.panel{margin:0}
+.phead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;border-bottom:1.5px solid var(--ink)}
+.phead b{font:700 12px/1 var(--mono);letter-spacing:1.2px;text-transform:uppercase}
+.phead b em{font-style:normal;color:var(--ai);margin-right:8px}
+.lamp{display:flex;align-items:center;gap:7px;font:11px/1 var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.lamp::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.lamp.rec::before{background:var(--ai);animation:blink 1s steps(2) infinite}.lamp.rec{color:var(--ai)}
+.lamp.busy::before{background:var(--warn);animation:blink .5s steps(2) infinite}
+.lamp.ok::before{background:var(--human)}
+@keyframes blink{50%{opacity:.2}}
+.pbody{padding:16px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
+.small{font-size:13px;color:var(--muted)}
+
+/* input */
+.seg{display:flex;border:1.5px solid var(--ink);border-radius:4px;overflow:hidden;margin-bottom:14px}
+.seg button{flex:1;background:none;border:0;padding:8px 6px;font:700 12px/1 var(--mono);letter-spacing:.6px;text-transform:uppercase;color:var(--ink);cursor:pointer;display:flex;gap:7px;align-items:center;justify-content:center}
+.seg button+button{border-left:1.5px solid var(--ink)}
+.seg button.on{background:var(--ink);color:var(--on-ink)}
+.src{border:1.5px dashed var(--line2);border-radius:4px;padding:20px;background:var(--panel2);text-align:center;min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:border-color .2s,background .2s}
+label.src{cursor:pointer}
+label.src:hover,.src.drag{border-color:var(--ai);background:var(--ai-bg)}
+.recbtn{width:92px;height:92px;border-radius:50%;border:0;cursor:pointer;background:var(--ai);color:#fff;display:grid;place-items:center;
+  box-shadow:0 0 0 7px var(--panel2),0 0 0 8.5px var(--line2),0 0 0 15px var(--panel2),0 0 0 16px var(--line);transition:transform .15s}
+.recbtn:hover{transform:scale(1.04)}
+.recbtn.live{background:var(--ink);color:var(--ai);animation:ring 1.3s infinite}
+.recbtn:disabled{opacity:.5;cursor:wait}
+@keyframes ring{0%{box-shadow:0 0 0 7px var(--panel2),0 0 0 8.5px var(--ai),0 0 0 15px var(--panel2),0 0 0 16px var(--line)}50%{box-shadow:0 0 0 7px var(--panel2),0 0 0 8.5px var(--line2),0 0 0 15px var(--panel2),0 0 0 16.5px var(--ai)}}
+.timer{font:13px/1.4 var(--mono);color:var(--muted);min-height:20px;margin-top:6px}
+.timer.live{color:var(--ai);font-weight:700;font-size:20px}
+.samples{display:flex;flex-direction:column;gap:8px;width:100%}
+.sample{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--panel);border:1.5px solid var(--line2);border-radius:4px;padding:10px 12px;color:var(--ink);font:13px var(--mono);cursor:pointer}
+.sample:hover{border-color:var(--ink)}
+.sample svg{color:var(--ai)}
+.preview{margin-top:14px;display:none}
+.preview.on{display:block}
+.fileline{display:flex;justify-content:space-between;align-items:center;gap:10px;font:12px var(--mono);color:var(--muted);margin-bottom:6px}
+canvas.wave{width:100%;height:64px;display:block;background:var(--panel2);border-radius:4px;border:1.5px solid var(--line)}
+audio{width:100%;height:36px;margin-top:8px}
+.btn{background:var(--ink);color:var(--on-ink);border:1.5px solid var(--ink);border-radius:4px;padding:10px 16px;font:700 13px/1 var(--mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .15s,border-color .15s}
+.btn:hover:not(:disabled){background:var(--ai);border-color:var(--ai);color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:none;color:var(--ink)}
+.btn.ghost:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+.btn.wide{width:100%;padding:15px;margin-top:14px;font-size:14px}
+.btn.small{padding:7px 10px;font-size:11px}
+.link{background:none;border:0;color:var(--ai);cursor:pointer;font:12px var(--mono);padding:2px 0}
+.status{min-height:20px;font-size:13px;color:var(--muted);margin:10px 0 0}
+.status.err{color:var(--ai)}
+.hint{font:11px var(--mono);color:var(--faint);margin-top:8px}
+kbd{border:1px solid var(--line2);border-bottom-width:2px;border-radius:3px;padding:0 5px;font:inherit;color:var(--ink2)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* analysis: meter + verdict */
+.readout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px;align-items:center}
+@media(max-width:560px){.readout{grid-template-columns:1fr}}
+.vu{width:100%;max-width:250px;display:block;margin:0 auto}
+.vu text{font-family:var(--mono)}
+#needle{transform-box:view-box;transform-origin:125px 128px;transition:transform 1.1s cubic-bezier(.25,1.45,.5,1)}
+.vunum{text-align:center;font:700 30px/1 var(--mono);margin-top:-4px;letter-spacing:-1px}
+.vunum small{display:block;font:10px/1.6 var(--mono);letter-spacing:1.5px;color:var(--faint);text-transform:uppercase}
+.idle h3{margin:0 0 6px;font:italic 400 26px/1.2 var(--serif);color:var(--ink2)}
+.stamp{display:inline-block;font:800 20px/1 var(--mono);letter-spacing:3px;text-transform:uppercase;padding:8px 14px;border:3px double currentColor;border-radius:4px;transform:rotate(-4deg);margin:4px 0 14px;opacity:.92}
+.stamp.ai{color:var(--ai)}.stamp.human{color:var(--human)}.stamp.warn{color:var(--warn)}
+.result.on .stamp{animation:stampin .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes stampin{from{transform:rotate(-12deg) scale(1.8);opacity:0}}
+.vtext h3{margin:0;font:400 23px/1.25 var(--serif)}
+.chips{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:11px/1 var(--mono);padding:5px 8px;border:1px solid var(--line2);border-radius:3px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.result{display:none}
+.result.on{display:block}
+.details{display:none;margin-top:18px;padding-top:16px;border-top:1.5px dashed var(--line2)}
+.details.on{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}}
+
+/* LED meters */
+.ledrow{display:grid;grid-template-columns:92px 1fr 54px;align-items:center;gap:10px;margin:8px 0;font:12px var(--mono);text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.ledrow b{text-align:right;color:var(--ink);font-size:14px;letter-spacing:0}
+.led{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;height:14px}
+.led i{background:var(--led-off);border-radius:1px;transition:background .15s}
+.pbwarn{margin-top:14px;padding:11px 14px;border-left:4px solid var(--warn);border-radius:0;background:var(--warn-bg);font-size:14px;line-height:1.5}
+.pbwarn b{color:var(--warn)}
+
+/* tape timeline */
+.tl-head{display:flex;justify-content:space-between;font:11px var(--mono);letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:20px 0 6px}
+.tape{border:1.5px solid var(--ink);border-radius:4px;background:repeating-linear-gradient(90deg,var(--panel2) 0 10px,var(--panel) 10px 20px);padding:8px 8px 0}
+.timeline{display:flex;gap:4px;align-items:flex-end;height:62px;position:relative}
+.timeline::after{content:"50%";position:absolute;right:0;top:50%;left:0;border-top:1px dashed var(--line2);font:9px var(--mono);color:var(--faint);text-align:right;line-height:0;padding-top:0}
+.timeline div{flex:1;min-width:3px;transform-origin:bottom;animation:grow .6s cubic-bezier(.2,.9,.3,1) backwards}
+@keyframes grow{from{transform:scaleY(0)}}
+.ticks{display:flex;gap:4px;font:9px/18px var(--mono);color:var(--faint)}
+.ticks span{flex:1;min-width:3px;text-align:left;overflow:hidden;white-space:nowrap}
+.note{font-size:12px;color:var(--faint);margin-top:12px}
+.fb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px;padding:11px 12px;border:1.5px dashed var(--line2);border-radius:4px;font-size:13px;color:var(--muted)}
+
+/* collect + about */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}main{padding:16px 16px 40px}}
+.prompt{background:var(--panel2);border-left:4px solid var(--ai);padding:14px 18px;font:italic 22px/1.4 var(--serif);margin:8px 0 10px}
+input[type=text],select{background:var(--panel);color:var(--ink);border:1.5px solid var(--line2);border-radius:4px;padding:9px 11px;font-size:14px;min-width:0;width:100%}
+input[type=text]:focus,select:focus{outline:2px solid var(--ai);outline-offset:1px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.stat{border:1.5px solid var(--line2);border-radius:4px;padding:12px;background:var(--panel2)}
+.stat b{display:block;font:700 24px/1.1 var(--mono)}.stat span{font-size:12px;color:var(--muted)}
+.pipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.step{border:1.5px solid var(--line2);border-radius:4px;padding:12px;background:var(--panel2)}
+.step i{display:block;font:700 11px var(--mono);color:var(--ai);font-style:normal;margin-bottom:4px}
+.step b{display:block;font:400 17px/1.2 var(--serif);margin-bottom:4px}.step span{font-size:12px;color:var(--muted)}
+h2.sec{margin:0 0 6px;font:400 22px/1.2 var(--serif)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.tbl th,.tbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tbl th{font:11px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1.5px solid var(--ink)}
+.tbl tr.sel td{background:var(--ai-bg);font-weight:700}
+.tbl td.num{font-family:var(--mono);text-align:right}.tbl th.num{text-align:right}
+.scroll{overflow-x:auto}
+.ebar{display:inline-block;height:6px;background:var(--ink2);vertical-align:middle;margin-left:6px}
+img.fig{width:100%;border-radius:4px;border:1.5px solid var(--line2);background:#fff;margin-top:8px}
+.banner{margin:14px 0 0;padding:12px 14px;border:1.5px solid var(--ai);border-left-width:5px;border-radius:0;background:var(--ai-bg);font-size:14px}
+footer{margin-top:26px;padding-top:12px;border-top:1.5px solid var(--ink);font:11px var(--mono);color:var(--faint);letter-spacing:.4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="brand">
+    <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div><h1>VOX<span>/</span>CHECK</h1><p data-i18n="tagline">Real voice or a machine?</p></div>
+  </div>
+  <div class="hright">
+    {% if not meta %}<span class="warnbadge" data-i18n="no_model">Model not loaded — run train.py</span>{% endif %}
+    <div class="langsw" role="group" aria-label="Interface language">
+      <button data-lang="uz">UZ</button><button data-lang="en" class="on">EN</button><button data-lang="ru">RU</button>
+    </div>
+    <button class="iconbtn" id="theme" title="Light / dark" aria-label="Toggle theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="banner hidden" id="banner" role="alert"></div>
+
+<nav class="tabs">
+  <button class="tab on" data-tab="check"><em>01</em><span data-i18n="tab_check">Check a voice</span></button>
+  <button class="tab" data-tab="collect"><em>02</em><span data-i18n="tab_collect">Collect data</span></button>
+  <button class="tab" data-tab="about"><em>03</em><span data-i18n="tab_about">How it works</span></button>
+</nav>
+
+<!-- ===================== CHECK ===================== -->
+<section id="tab-check">
+ <div class="hero">
+   <h2 data-i18n-html="hero">Hear something off? <i>Let the lab listen.</i></h2>
+   <p data-i18n="hero_sub">Record or upload 3–15 seconds of speech in Uzbek, English or Russian.</p>
+ </div>
+ <div class="dash">
+  <!-- A: input -->
+  <div class="panel">
+    <div class="phead"><b><em>A</em><span data-i18n="p_input">Input</span></b><span class="lamp" id="lampIn">standby</span></div>
+    <div class="pbody">
+      <div class="seg">
+        <button class="on" data-src="mic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg><span data-i18n="src_mic">Microphone</span></button>
+        <button data-src="upload"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 17v3h16v-3M7 9l5-5 5 5M12 4v12"/></svg><span data-i18n="src_upload">Upload</span></button>
+        {% if samples %}<button data-src="samples"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span data-i18n="src_samples">Samples</span></button>{% endif %}
+      </div>
+      <div class="src" id="pane-mic">
+        <button class="recbtn" id="rec" title="R" aria-label="Record"></button>
+        <div class="timer" id="timer" data-i18n="rec_hint">Press to record · max 30 s</div>
+      </div>
+      <label class="src hidden" id="drop">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="color:var(--ai)"><path d="M4 17v3h16v-3M7 9l5-5 5 5M12 4v12"/></svg>
+        <div><b data-i18n="drop_title">Drop an audio file</b><br><span class="small" data-i18n="drop_sub">or click to browse · wav, mp3, ogg, m4a, webm, flac</span></div>
+        <input type="file" id="file" accept="audio/*,.wav,.mp3,.ogg,.m4a,.webm,.flac,.opus" hidden>
+      </label>
+      {% if samples %}
+      <div class="src hidden" id="pane-samples" style="justify-content:flex-start">
+        <div class="samples">
+        {% for s in samples %}<button class="sample" data-src="{{ url_for('static', filename='samples/' + s) }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>{{ s.rsplit('.',1)[0] }}</button>{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="preview" id="preview">
+        <div class="fileline"><span id="fname"></span><button class="link" id="clear">✕ <span data-i18n="clear">clear</span></button></div>
+        <canvas class="wave" id="wave"></canvas>
+        <audio id="player" controls></audio>
+      </div>
+      <button class="btn wide" id="analyze" disabled data-i18n="analyze">Analyze voice →</button>
+      <p class="status" id="status"></p>
+      <div class="hint" data-i18n-html="hint_keys"><kbd>R</kbd> record / stop · <kbd>Enter</kbd> analyze</div>
+    </div>
+  </div>
+
+  <!-- B: analysis -->
+  <div class="panel">
+    <div class="phead"><b><em>B</em><span data-i18n="p_analysis">Analysis</span></b><span class="lamp" id="lampOut">standby</span></div>
+    <div class="pbody">
+      <div class="readout">
+        <div>
+          <svg class="vu" viewBox="0 0 250 150" aria-hidden="true">
+            <g id="vuScale"></g>
+            <text x="25" y="147" font-size="10" fill="var(--human)" text-anchor="middle" data-i18n="meter_human">HUMAN</text>
+            <text x="225" y="147" font-size="10" fill="var(--ai)" text-anchor="middle" data-i18n="meter_ai">AI</text>
+            <g id="needle" style="transform:rotate(-90deg)">
+              <line x1="125" y1="128" x2="125" y2="36" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+            <circle cx="125" cy="128" r="9" fill="var(--ink)"/><circle cx="125" cy="128" r="3" fill="var(--ai)"/>
+          </svg>
+          <div class="vunum"><span id="gnum">—</span><small data-i18n="ai_prob">AI probability</small></div>
+        </div>
+        <div>
+          <div class="idle" id="empty">
+            <h3 data-i18n="wait_title">Waiting for a voice.</h3>
+            <p class="small" data-i18n="wait_sub">Record, upload or pick a sample, then press “Analyze voice”.</p>
+          </div>
+          <div class="result" id="result">
+            <div class="stamp" id="stamp"></div>
+            <div class="vtext"><h3 id="verdict"></h3></div>
+            <div class="chips"><span class="chip" id="conf"></span><span class="chip" id="dur"></span><span class="chip" id="lat"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="details" id="details">
+        <div class="ledrow"><span data-i18n="bar_ai">AI</span><div class="led" id="aled"></div><b id="anum"></b></div>
+        <div class="ledrow"><span data-i18n="bar_human">Human</span><div class="led" id="hled"></div><b id="hnum"></b></div>
+        <div class="ledrow hidden" id="pbrow"><span data-i18n="bar_pb">Playback</span><div class="led" id="pled"></div><b id="pnum"></b></div>
+        <div class="pbwarn hidden" id="pbwarn" data-i18n-html="pbwarn"></div>
+        <div class="tl-head"><span data-i18n="tl_title">AI probability over time</span><span data-i18n="tl_sub">each bar = 2 s window</span></div>
+        <div class="tape"><div class="timeline" id="timeline"></div><div class="ticks" id="ticks"></div></div>
+        <p class="note" id="unsureNote" style="color:var(--warn)"></p>
+        <div class="fb" id="fb">
+          <span data-i18n="fb_q">Wrong answer? Teach the model:</span>
+          <button class="btn ghost small" data-label="ai" data-i18n="fb_ai">It was AI</button>
+          <button class="btn ghost small" data-label="human" data-i18n="fb_human">It was a human</button>
+          <span id="fbStatus" class="small"></span>
+        </div>
+        <p class="note" data-i18n="disclaimer">Experimental model. The result is a probability, not proof.</p>
+      </div>
+    </div>
+  </div>
+ </div>
+</section>
+
+<!-- ===================== COLLECT ===================== -->
+<section id="tab-collect" class="hidden">
+  <div class="panel">
+    <div class="phead"><b><em>C</em><span data-i18n="c_title">Grow the dataset</span></b><span class="lamp" id="lampCol" data-i18n="lamp_idle">standby</span></div>
+    <div class="pbody">
+      <p class="sub" data-i18n="c_sub">Read the sentence aloud, listen back, then save.</p>
+      <div class="prompt" id="sentence"></div>
+      <button class="link" id="next" data-i18n="c_next">↻ another sentence</button>
+      <div class="grid" style="margin-top:14px">
+        <div class="src" style="min-height:170px">
+          <button class="recbtn" id="rec2" aria-label="Record"></button>
+          <div class="timer" id="timer2" data-i18n="c_rec">Press to record</div>
+        </div>
+        <div class="src" style="min-height:170px;align-items:stretch;text-align:left;justify-content:center">
+          <input type="text" id="speaker" data-i18n-ph="c_speaker" placeholder="Speaker name" maxlength="30">
+          <select id="label"><option value="human" data-i18n="c_lab_h">Label: human</option><option value="ai" data-i18n="c_lab_ai">Label: ai</option></select>
+          <button class="btn" id="save" disabled data-i18n="c_save">Save recording</button>
+        </div>
+      </div>
+      <audio id="player2" controls class="hidden"></audio>
+      <p class="status" id="cstatus"></p>
+      <div class="stats" id="stats"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ABOUT ===================== -->
+<section id="tab-about" class="hidden">
+  <div class="panel"><div class="pbody">
+    <h2 class="sec" data-i18n="a_pipe">Pipeline</h2>
+    <p class="sub" data-i18n="a_pipe_sub">Built by our team; reused parts are listed in the README.</p>
+    <div class="pipe">
+      <div class="step"><i>01</i><b data-i18n="s1">Data</b><span data-i18n="s1t"></span></div>
+      <div class="step"><i>02</i><b data-i18n="s2">Cleaning</b><span data-i18n="s2t"></span></div>
+      <div class="step"><i>03</i><b data-i18n="s3">Augmentation</b><span data-i18n="s3t"></span></div>
+      <div class="step"><i>04</i><b data-i18n="s4">Features</b><span data-i18n="s4t"></span></div>
+      <div class="step"><i>05</i><b data-i18n="s5">Model</b><span data-i18n="s5t"></span></div>
+      <div class="step"><i>06</i><b data-i18n="s6">Decision</b><span data-i18n="s6t"></span></div>
+    </div>
+  </div></div>
+  <div class="panel"><div class="pbody">
+    <h2 class="sec" data-i18n="a_data">Dataset</h2>
+    <div class="stats" id="dstats"><span class="sub" data-i18n="no_data">No processed data yet.</span></div>
+  </div></div>
+  <div class="panel"><div class="pbody">
+    <h2 class="sec" data-i18n="a_exp">Experiments</h2>
+    <p class="sub" data-i18n="a_exp_sub"></p>
+    <div class="scroll"><table class="tbl" id="exps"></table></div>
+  </div></div>
+  <div class="panel hidden" id="bd"><div class="pbody">
+    <h2 class="sec" data-i18n="a_bd">Where does the model work?</h2>
+    <p class="sub" data-i18n="a_bd_sub"></p>
+    <div class="grid">
+      <div class="scroll"><table class="tbl" id="bdAtt"></table></div>
+      <div class="scroll"><table class="tbl" id="bdLang"></table></div>
+    </div>
+  </div></div>
+  <div class="panel hidden" id="pbcard"><div class="pbody">
+    <h2 class="sec" data-i18n="a_pb">Playback detector</h2>
+    <p class="sub" data-i18n="a_pb_sub"></p>
+    <div class="scroll"><table class="tbl" id="pbtbl"></table></div>
+    <p class="small" id="pbnote"></p>
+  </div></div>
+  <div class="panel" id="figs"><div class="pbody" id="figsBody"></div></div>
+</section>
+
+<footer><span>VOX/CHECK</span><span data-i18n="footer">IUT · Artificial Intelligence · runs locally, nothing leaves this laptop</span></footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SENTENCES = {{ sentences|tojson }};
+const MAX_REC_S = 30;
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ICON_MIC = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/><path d="M5 10a7 7 0 0 0 14 0M8 21h8M12 17v4"/></svg>';
+const ICON_STOP = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>';
+
+/* ================================================= i18n */
+const I18N = {
+ en: {
+  tagline: "Real voice or a machine?", no_model: "Model not loaded — run train.py",
+  tab_check: "Check a voice", tab_collect: "Collect data", tab_about: "How it works",
+  hero: "Hear something off? <i>Let the lab listen.</i>",
+  hero_sub: "Record or upload 3–15 seconds of speech in Uzbek, English or Russian.",
+  p_input: "Input", p_analysis: "Analysis",
+  lamp_idle: "standby", lamp_rec: "recording", lamp_loaded: "loaded", lamp_busy: "analyzing", lamp_done: "result",
+  src_mic: "Microphone", src_upload: "Upload", src_samples: "Samples",
+  rec_hint: "Press to record · max 30 s", drop_title: "Drop an audio file",
+  drop_sub: "or click to browse · wav, mp3, ogg, m4a, webm, flac", clear: "clear",
+  analyze: "Analyze voice →", analyzing: "Analyzing…",
+  st_start: "Record or upload audio to start.", st_ready: "Ready. Press “Analyze voice”.",
+  st_short: "Recording too short — speak for at least 2 seconds.", st_big: "File is larger than 25 MB.",
+  st_notaudio: "That doesn't look like an audio file.", st_timeout: "Timed out — try a shorter clip.",
+  st_server: "Server is not running.", mic_blocked: "Microphone blocked — allow it in the address bar.",
+  rec_done: "Recorded {s} s — press to record again", mic_rec_name: "Microphone recording ({s} s)", sample_name: "Sample: ",
+  hint_keys: "<kbd>R</kbd> record / stop · <kbd>Enter</kbd> analyze",
+  meter_human: "HUMAN", meter_ai: "AI", ai_prob: "AI probability",
+  wait_title: "Waiting for a voice.", wait_sub: "Record, upload or pick a sample, then press “Analyze voice”.",
+  stamp_ai: "Synthetic", stamp_human: "Human", stamp_warn: "Suspicious", stamp_unsure: "Uncertain",
+  v_ai: "This voice is most likely AI-generated.", v_human: "This sounds like a real person.",
+  v_played: "This voice is coming from a device, not from a live person.",
+  v_unsure: "Hard to tell — leaning {x}.", x_ai: "AI", x_human: "human",
+  conf: "Confidence: {c}", c_high: "high", c_medium: "medium", c_low: "low", dur: "{s} s audio", lat: "{ms} ms",
+  bar_ai: "AI", bar_human: "Human", bar_pb: "Playback",
+  pbwarn: "<b>Played from a device.</b> This voice sounds like it comes from a phone, laptop or speaker, not spoken live. In a call or a voice check, that's a typical sign of a fake.",
+  tl_title: "AI probability over time", tl_sub: "each bar = 2 s window",
+  unsure_note: "The model isn't sure. Try a longer clip (5–15 s) of clear speech without music.",
+  fb_q: "Wrong answer? Teach the model:", fb_ai: "It was AI", fb_human: "It was a human",
+  fb_saved: "Saved as {l}. {n} corrections collected — they're used in the next training round.",
+  disclaimer: "Experimental model. The result is a probability, not proof.",
+  c_title: "Grow the dataset",
+  c_sub: "Read the sentence aloud, listen back, then save. Use one name per person. For AI examples, play a TTS voice from a phone and record it here with the label ai.",
+  c_next: "↻ another sentence", c_rec: "Press to record", c_speaker: "Speaker name, e.g. aziz",
+  c_lab_h: "Label: human", c_lab_ai: "Label: ai (played from a device)", c_save: "Save recording",
+  c_too_short: "Too short.", c_listen: "Listen back, then save.", c_saved: "Saved {f} — {n} recordings from this speaker.",
+  c_say: "Say anything for 5 seconds.",
+  k_hf: "human files", k_hs: "human speakers", k_af: "AI files", k_av: "AI voices",
+  a_pipe: "Pipeline", a_pipe_sub: "Built by our team; reused parts are listed in the README.",
+  s1: "Data", s1t: "Human: Uzbek, English and Russian speech (FLEURS, LibriSpeech, our microphone recordings). AI: 4 TTS engines, voice cloning, 5 voice changers, AI played from a phone.",
+  s2: "Cleaning", s2t: "16 kHz mono, silence removal, loudness normalisation.",
+  s3: "Augmentation", s3t: "Phone and laptop speaker replay, laptop mic hiss and auto-gain, room echo, codecs and noise — on both classes.",
+  s4: "Features", s4t: "2 s windows → 64-band log-mel spectrogram, WavLM embeddings.",
+  s5: "Model", s5t: "Own VoxCNN from scratch + WavLM classifier, compared with baselines in grouped cross-validation.",
+  s6: "Decision", s6t: "Window scores averaged → AI probability, timeline and playback check.",
+  a_data: "Dataset", no_data: "No processed data yet.",
+  k_hr: "human recordings", k_hg: "human groups", k_hm: "human minutes", k_ar: "AI recordings", k_ag: "AI groups", k_am: "AI minutes",
+  a_exp: "Experiments", a_exp_sub: "Same folds and metrics for every row; test voices were never heard in training. EER = equal error rate (lower is better).",
+  a_bd: "Where does the model work?", a_bd_sub: "Out-of-fold results per type of fake and per language.",
+  a_pb: "Playback detector", a_pb_sub: "Second model: a live voice into the mic vs. audio played from a phone or speaker.",
+  pb_on: "Enabled in the app.", pb_off: "Not enabled yet: not accurate enough on real recordings.",
+  pb_counts: "{r} real replays, {l} live recordings.", a_roc: "ROC curves (out-of-fold)", a_prep: "Preprocessing: before → after",
+  footer: "IUT · Artificial Intelligence · runs locally, nothing leaves this laptop",
+ },
+ uz: {
+  tagline: "Haqiqiy ovozmi yoki mashina?", no_model: "Model yuklanmagan — train.py ni ishga tushiring",
+  tab_check: "Ovozni tekshirish", tab_collect: "Ma'lumot yig'ish", tab_about: "Qanday ishlaydi",
+  hero: "Ovoz shubhali tuyuldimi? <i>Laboratoriya tinglab ko'rsin.</i>",
+  hero_sub: "O'zbek, ingliz yoki rus tilida 3–15 soniyalik nutqni yozib oling yoki yuklang.",
+  p_input: "Kirish", p_analysis: "Tahlil",
+  lamp_idle: "kutish", lamp_rec: "yozilmoqda", lamp_loaded: "yuklandi", lamp_busy: "tahlil", lamp_done: "natija",
+  src_mic: "Mikrofon", src_upload: "Yuklash", src_samples: "Namunalar",
+  rec_hint: "Yozish uchun bosing · maks. 30 s", drop_title: "Audio faylni shu yerga tashlang",
+  drop_sub: "yoki tanlash uchun bosing · wav, mp3, ogg, m4a, webm, flac", clear: "tozalash",
+  analyze: "Tahlil qilish →", analyzing: "Tahlil qilinmoqda…",
+  st_start: "Boshlash uchun ovoz yozing yoki fayl yuklang.", st_ready: "Tayyor. “Tahlil qilish” tugmasini bosing.",
+  st_short: "Yozuv juda qisqa — kamida 2 soniya gapiring.", st_big: "Fayl 25 MB dan katta.",
+  st_notaudio: "Bu audio faylga o'xshamaydi.", st_timeout: "Vaqt tugadi — qisqaroq yozuv bilan urinib ko'ring.",
+  st_server: "Server ishlamayapti.", mic_blocked: "Mikrofon bloklangan — manzil satrida ruxsat bering.",
+  rec_done: "{s} s yozildi — qayta yozish uchun bosing", mic_rec_name: "Mikrofon yozuvi ({s} s)", sample_name: "Namuna: ",
+  hint_keys: "<kbd>R</kbd> yozish / to'xtatish · <kbd>Enter</kbd> tahlil",
+  meter_human: "INSON", meter_ai: "SI", ai_prob: "SI ehtimoli",
+  wait_title: "Ovoz kutilmoqda.", wait_sub: "Ovoz yozing, fayl yuklang yoki namunani tanlang, so'ng “Tahlil qilish”ni bosing.",
+  stamp_ai: "Sun'iy", stamp_human: "Inson", stamp_warn: "Shubhali", stamp_unsure: "Noaniq",
+  v_ai: "Bu ovoz katta ehtimol bilan sun'iy intellekt tomonidan yaratilgan.", v_human: "Bu haqiqiy odamning ovoziga o'xshaydi.",
+  v_played: "Bu ovoz tirik odamdan emas, qurilmadan kelmoqda.",
+  v_unsure: "Aniqlash qiyin — {x} tomonga moyil.", x_ai: "SI", x_human: "inson",
+  conf: "Ishonch: {c}", c_high: "yuqori", c_medium: "o'rtacha", c_low: "past", dur: "{s} s audio", lat: "{ms} ms",
+  bar_ai: "SI", bar_human: "Inson", bar_pb: "Qurilma",
+  pbwarn: "<b>Qurilmadan ijro etilgan.</b> Bu ovoz jonli gapirilmagan — telefon, noutbuk yoki karnaydan eshitilmoqda. Qo'ng'iroq yoki ovozli tekshiruvda bu soxtalikning odatiy belgisi.",
+  tl_title: "Vaqt bo'yicha SI ehtimoli", tl_sub: "har bir ustun = 2 s",
+  unsure_note: "Model ishonchsiz. Musiqasiz, aniq nutqdan iborat uzunroq (5–15 s) yozuv bilan urinib ko'ring.",
+  fb_q: "Javob noto'g'rimi? Modelni o'rgating:", fb_ai: "Bu SI edi", fb_human: "Bu odam edi",
+  fb_saved: "“{l}” sifatida saqlandi. {n} ta tuzatish yig'ildi — ular keyingi o'qitishda ishlatiladi.",
+  disclaimer: "Eksperimental model. Natija — bu ehtimollik, isbot emas.",
+  c_title: "Ma'lumotlar to'plamini kengaytiring",
+  c_sub: "Gapni ovoz chiqarib o'qing, tinglab ko'ring va saqlang. Har bir odam uchun bitta ism. SI namunalari uchun TTS ovozini telefondan ijro eting va bu yerda ai belgisi bilan yozib oling.",
+  c_next: "↻ boshqa gap", c_rec: "Yozish uchun bosing", c_speaker: "Ism, masalan: aziz",
+  c_lab_h: "Belgi: inson", c_lab_ai: "Belgi: ai (qurilmadan ijro)", c_save: "Yozuvni saqlash",
+  c_too_short: "Juda qisqa.", c_listen: "Tinglab ko'ring, so'ng saqlang.", c_saved: "{f} saqlandi — bu odamdan {n} ta yozuv.",
+  c_say: "5 soniya davomida istalgan narsani ayting.",
+  k_hf: "inson fayllari", k_hs: "so'zlovchilar", k_af: "SI fayllari", k_av: "SI ovozlari",
+  a_pipe: "Jarayon", a_pipe_sub: "Jamoamiz tomonidan yaratilgan; qayta ishlatilgan qismlar README da ko'rsatilgan.",
+  s1: "Ma'lumotlar", s1t: "Inson: o'zbek, ingliz va rus nutqi (FLEURS, LibriSpeech, mikrofon yozuvlarimiz). SI: 4 ta TTS, ovoz klonlash, 5 xil ovoz o'zgartirgich, telefondan ijro etilgan SI.",
+  s2: "Tozalash", s2t: "16 kHz mono, sukunatni olib tashlash, ovoz balandligini tenglashtirish.",
+  s3: "Augmentatsiya", s3t: "Telefon va noutbuk karnayidan ijro, mikrofon shovqini va avto-kuchaytirish, xona aks-sadosi, kodeklar va shovqin — ikkala sinfga ham.",
+  s4: "Belgilar", s4t: "2 s oynalar → 64 polosali log-mel spektrogramma, WavLM vektorlari.",
+  s5: "Model", s5t: "Noldan o'qitilgan VoxCNN + WavLM klassifikatori, guruhlangan kross-validatsiyada boshqa modellar bilan solishtirilgan.",
+  s6: "Qaror", s6t: "Oyna natijalari o'rtachalanadi → SI ehtimoli, vaqt chizig'i va qurilma tekshiruvi.",
+  a_data: "Ma'lumotlar", no_data: "Hali qayta ishlangan ma'lumot yo'q.",
+  k_hr: "inson yozuvlari", k_hg: "inson guruhlari", k_hm: "inson daqiqalari", k_ar: "SI yozuvlari", k_ag: "SI guruhlari", k_am: "SI daqiqalari",
+  a_exp: "Tajribalar", a_exp_sub: "Har bir qator uchun bir xil bo'linmalar va metrikalar; test ovozlari o'qitishda eshitilmagan. EER — teng xatolik darajasi (past bo'lsa, yaxshi).",
+  a_bd: "Model qayerda yaxshi ishlaydi?", a_bd_sub: "Soxtalik turi va til bo'yicha fold tashqarisidagi natijalar.",
+  a_pb: "Qurilma detektori", a_pb_sub: "Ikkinchi model: mikrofonga jonli ovoz va telefon yoki karnaydan ijro etilgan audio.",
+  pb_on: "Ilovada yoqilgan.", pb_off: "Hali yoqilmagan: haqiqiy yozuvlarda aniqligi yetarli emas.",
+  pb_counts: "{r} ta haqiqiy qayta ijro, {l} ta jonli yozuv.", a_roc: "ROC egri chiziqlari", a_prep: "Qayta ishlash: oldin → keyin",
+  footer: "IUT · Sun'iy intellekt · lokal ishlaydi, hech narsa noutbukdan chiqmaydi",
+ },
+ ru: {
+  tagline: "Живой голос или машина?", no_model: "Модель не загружена — запустите train.py",
+  tab_check: "Проверить голос", tab_collect: "Сбор данных", tab_about: "Как это работает",
+  hero: "Голос кажется странным? <i>Пусть лаборатория послушает.</i>",
+  hero_sub: "Запишите или загрузите 3–15 секунд речи на узбекском, английском или русском.",
+  p_input: "Ввод", p_analysis: "Анализ",
+  lamp_idle: "ожидание", lamp_rec: "запись", lamp_loaded: "загружено", lamp_busy: "анализ", lamp_done: "результат",
+  src_mic: "Микрофон", src_upload: "Файл", src_samples: "Примеры",
+  rec_hint: "Нажмите для записи · макс. 30 с", drop_title: "Перетащите аудиофайл",
+  drop_sub: "или нажмите, чтобы выбрать · wav, mp3, ogg, m4a, webm, flac", clear: "очистить",
+  analyze: "Анализировать →", analyzing: "Анализ…",
+  st_start: "Запишите или загрузите аудио, чтобы начать.", st_ready: "Готово. Нажмите «Анализировать».",
+  st_short: "Слишком короткая запись — говорите хотя бы 2 секунды.", st_big: "Файл больше 25 МБ.",
+  st_notaudio: "Это не похоже на аудиофайл.", st_timeout: "Время вышло — попробуйте запись покороче.",
+  st_server: "Сервер не запущен.", mic_blocked: "Микрофон заблокирован — разрешите его в адресной строке.",
+  rec_done: "Записано {s} с — нажмите, чтобы записать снова", mic_rec_name: "Запись с микрофона ({s} с)", sample_name: "Пример: ",
+  hint_keys: "<kbd>R</kbd> запись / стоп · <kbd>Enter</kbd> анализ",
+  meter_human: "ЧЕЛОВЕК", meter_ai: "ИИ", ai_prob: "Вероятность ИИ",
+  wait_title: "Ждём голос.", wait_sub: "Запишите, загрузите или выберите пример, затем нажмите «Анализировать».",
+  stamp_ai: "Синтез", stamp_human: "Человек", stamp_warn: "Подозрительно", stamp_unsure: "Неясно",
+  v_ai: "Этот голос, скорее всего, создан ИИ.", v_human: "Похоже на живого человека.",
+  v_played: "Голос звучит из устройства, а не от живого человека.",
+  v_unsure: "Трудно сказать — скорее {x}.", x_ai: "ИИ", x_human: "человек",
+  conf: "Уверенность: {c}", c_high: "высокая", c_medium: "средняя", c_low: "низкая", dur: "{s} с аудио", lat: "{ms} мс",
+  bar_ai: "ИИ", bar_human: "Человек", bar_pb: "С устройства",
+  pbwarn: "<b>Воспроизведено с устройства.</b> Голос звучит из телефона, ноутбука или колонки, а не вживую. В звонке или голосовой проверке это типичный признак подделки.",
+  tl_title: "Вероятность ИИ во времени", tl_sub: "каждый столбец = 2 с",
+  unsure_note: "Модель не уверена. Попробуйте запись подлиннее (5–15 с) с чистой речью без музыки.",
+  fb_q: "Ответ неверный? Научите модель:", fb_ai: "Это был ИИ", fb_human: "Это был человек",
+  fb_saved: "Сохранено как «{l}». Собрано исправлений: {n} — они пойдут в следующее обучение.",
+  disclaimer: "Экспериментальная модель. Результат — вероятность, а не доказательство.",
+  c_title: "Пополните датасет",
+  c_sub: "Прочитайте предложение вслух, прослушайте и сохраните. Одно имя на человека. Для примеров ИИ воспроизведите TTS-голос с телефона и запишите здесь с меткой ai.",
+  c_next: "↻ другое предложение", c_rec: "Нажмите для записи", c_speaker: "Имя, например: aziz",
+  c_lab_h: "Метка: человек", c_lab_ai: "Метка: ai (с устройства)", c_save: "Сохранить запись",
+  c_too_short: "Слишком коротко.", c_listen: "Прослушайте и сохраните.", c_saved: "Сохранено {f} — записей этого человека: {n}.",
+  c_say: "Скажите что угодно в течение 5 секунд.",
+  k_hf: "файлы людей", k_hs: "дикторы", k_af: "файлы ИИ", k_av: "голоса ИИ",
+  a_pipe: "Конвейер", a_pipe_sub: "Сделано нашей командой; заимствованные части перечислены в README.",
+  s1: "Данные", s1t: "Человек: речь на узбекском, английском и русском (FLEURS, LibriSpeech, наши записи с микрофона). ИИ: 4 TTS-движка, клонирование голоса, 5 типов изменителей голоса, ИИ с телефона.",
+  s2: "Очистка", s2t: "16 кГц моно, удаление тишины, нормализация громкости.",
+  s3: "Аугментация", s3t: "Воспроизведение через динамик телефона и ноутбука, шум и автоусиление микрофона, эхо комнаты, кодеки и шум — для обоих классов.",
+  s4: "Признаки", s4t: "Окна 2 с → лог-мел спектрограмма (64 полосы), эмбеддинги WavLM.",
+  s5: "Модель", s5t: "Своя VoxCNN с нуля + классификатор на WavLM, сравнение с базовыми моделями в групповой кросс-валидации.",
+  s6: "Решение", s6t: "Оценки окон усредняются → вероятность ИИ, график по времени и проверка воспроизведения.",
+  a_data: "Датасет", no_data: "Обработанных данных пока нет.",
+  k_hr: "записи людей", k_hg: "группы людей", k_hm: "минуты людей", k_ar: "записи ИИ", k_ag: "группы ИИ", k_am: "минуты ИИ",
+  a_exp: "Эксперименты", a_exp_sub: "Одинаковые фолды и метрики для всех строк; тестовые голоса не встречались при обучении. EER — равный уровень ошибок (чем ниже, тем лучше).",
+  a_bd: "Где модель работает?", a_bd_sub: "Результаты вне фолда по типу подделки и языку.",
+  a_pb: "Детектор воспроизведения", a_pb_sub: "Вторая модель: живой голос в микрофон или звук с телефона/колонки.",
+  pb_on: "Включён в приложении.", pb_off: "Пока не включён: недостаточно точен на реальных записях.",
+  pb_counts: "Реальных воспроизведений: {r}, живых записей: {l}.", a_roc: "ROC-кривые (вне фолда)", a_prep: "Предобработка: до → после",
+  footer: "IUT · Искусственный интеллект · работает локально, ничего не покидает ноутбук",
+ },
+};
+
+const I18N_EXTRA = {
+ en: {err_decode: "This file couldn't be read as audio. Try wav, mp3, ogg, m4a or webm.",
+      err_speech: "Not enough speech — record at least 2 seconds of voice.", err_empty: "The recording is empty — check that the right microphone is selected.",
+      err_big: "File is too large (max 25 MB).", err_generic: "Something went wrong on the server. Try again.",
+      srv_bad: "The server can't analyse audio right now: {e}. Restart it with: python app.py",
+      srv_down: "The VoxCheck server isn't running. Start it with: python app.py"},
+ uz: {err_decode: "Bu faylni audio sifatida o'qib bo'lmadi. wav, mp3, ogg, m4a yoki webm bilan urinib ko'ring.",
+      err_speech: "Nutq yetarli emas — kamida 2 soniya gapiring.", err_empty: "Yozuv bo'sh — to'g'ri mikrofon tanlanganini tekshiring.",
+      err_big: "Fayl juda katta (maks. 25 MB).", err_generic: "Serverda xatolik yuz berdi. Qayta urinib ko'ring.",
+      srv_bad: "Server hozir audioni tahlil qila olmayapti: {e}. Qayta ishga tushiring: python app.py",
+      srv_down: "VoxCheck serveri ishlamayapti. Ishga tushiring: python app.py"},
+ ru: {err_decode: "Не удалось прочитать файл как аудио. Попробуйте wav, mp3, ogg, m4a или webm.",
+      err_speech: "Недостаточно речи — запишите хотя бы 2 секунды голоса.", err_empty: "Запись пустая — проверьте, выбран ли нужный микрофон.",
+      err_big: "Файл слишком большой (макс. 25 МБ).", err_generic: "Ошибка на сервере. Попробуйте ещё раз.",
+      srv_bad: "Сервер сейчас не может анализировать аудио: {e}. Перезапустите: python app.py",
+      srv_down: "Сервер VoxCheck не запущен. Запустите: python app.py"},
+};
+for (const l in I18N_EXTRA) Object.assign(I18N[l], I18N_EXTRA[l]);
+function serverError(msg) {        // backend messages (English) -> translated keys
+  const m = String(msg || "");
+  if (/could not read|could not process/i.test(m)) return "err_decode";
+  if (/not enough speech/i.test(m)) return "err_speech";
+  if (/empty|no audio/i.test(m)) return "err_empty";
+  if (/too large/i.test(m)) return "err_big";
+  if (/model not loaded/i.test(m)) return "no_model";
+  return null;
+}
+let LANG = "en";
+try { const l = localStorage.getItem("vox_lang"); if (I18N[l]) LANG = l; } catch (e) {}
+const t = (k, v = {}) => (I18N[LANG][k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => v[n] ?? "");
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = t(el.dataset.i18nPh));
+  document.querySelectorAll(".langsw button").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+  View.render();
+}
+document.querySelectorAll(".langsw button").forEach(b => b.onclick = () => {
+  LANG = b.dataset.lang;
+  try { localStorage.setItem("vox_lang", LANG); } catch (e) {}
+  applyLang();
+  if (!$("tab-about").classList.contains("hidden")) loadAbout();
+  if (!$("tab-collect").classList.contains("hidden")) loadStats();
+});
+
+/* Everything language-dependent that JS writes is kept as {key, vars} and re-rendered on language change. */
+const View = {
+  status: {k: "st_start"}, statusErr: false, fname: null, timer: null, result: null, lampIn: "lamp_idle", lampOut: "lamp_idle",
+  render() {
+    $("status").textContent = this.status ? (this.status.raw ?? t(this.status.k, this.status.v)) : "";
+    $("status").classList.toggle("err", this.statusErr);
+    if (this.fname) $("fname").textContent = (this.fname.raw ?? t(this.fname.k, this.fname.v)) + (this.fname.suffix || "") + (this.fname.size ? ` · ${this.fname.size}` : "");
+    if (this.timer && Rec.state === "idle") $("timer").textContent = t(this.timer.k, this.timer.v);
+    setLamp("lampIn", this.lampIn); setLamp("lampOut", this.lampOut);
+    if (this.result) paintVerdict(this.result);
+    if (!busy) $("analyze").textContent = t("analyze");
+    if (typeof paintBanner === "function") paintBanner();
+  }
+};
+function setLamp(id, k) {
+  const el = $(id); el.textContent = t(k);
+  el.className = "lamp" + (k === "lamp_rec" ? " rec" : k === "lamp_busy" ? " busy" : (k === "lamp_done" || k === "lamp_loaded") ? " ok" : "");
+}
+function setStatus(k, err = false, v) { View.status = k === null ? null : (typeof k === "object" ? k : {k, v}); View.statusErr = err; View.render(); }
+
+/* ================================================= theme */
+try { const th = localStorage.getItem("vox_theme"); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+$("theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme;
+  const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("vox_theme", document.documentElement.dataset.theme); } catch (e) {}
+  if (current) drawFileWave(current, $("wave"));
+};
+
+/* ================================================= tabs + input source */
+document.querySelectorAll(".tab").forEach(tb => tb.onclick = () => {
+  if (Rec.state !== "idle") Rec.stop();
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === tb));
+  ["check", "collect", "about"].forEach(n => $("tab-" + n).classList.toggle("hidden", tb.dataset.tab !== n));
+  if (tb.dataset.tab === "collect") loadStats();
+  if (tb.dataset.tab === "about") loadAbout();
+});
+const PANES = {mic: "pane-mic", upload: "drop", samples: "pane-samples"};
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  if (Rec.state !== "idle" && b.dataset.src !== "mic") Rec.stop();
+  document.querySelectorAll(".seg button").forEach(x => x.classList.toggle("on", x === b));
+  Object.entries(PANES).forEach(([k, id]) => $(id) && $(id).classList.toggle("hidden", k !== b.dataset.src));
+});
+
+/* ================================================= VU meter */
+(function buildScale() {
+  const cx = 125, cy = 128, R = 100, pt = (p, r) => { const a = Math.PI * (1 - p / 100); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
+  const arc = (p0, p1, r) => { const [x0, y0] = pt(p0, r), [x1, y1] = pt(p1, r); return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
+  let g = `<path d="${arc(0, 40, R)}" stroke="var(--human)" stroke-width="7" fill="none"/>` +
+          `<path d="${arc(40, 60, R)}" stroke="var(--warn)" stroke-width="7" fill="none"/>` +
+          `<path d="${arc(60, 100, R)}" stroke="var(--ai)" stroke-width="7" fill="none"/>`;
+  for (let p = 0; p <= 100; p += 5) {
+    const major = p % 25 === 0, [x0, y0] = pt(p, R - 6), [x1, y1] = pt(p, R - (major ? 18 : 12));
+    g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--ink)" stroke-width="${major ? 1.8 : 1}"/>`;
+    if (major) { const [tx, ty] = pt(p, R - 30); g += `<text x="${tx.toFixed(1)}" y="${(ty + 3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="middle">${p}</text>`; }
+  }
+  $("vuScale").innerHTML = g;
+})();
+const setNeedle = p => { $("needle").style.transform = `rotate(${(p * 1.8 - 90).toFixed(1)}deg)`; };
+
+function led(el, pct, color) {
+  const n = 24, lit = Math.round(pct / 100 * n);
+  el.innerHTML = Array.from({length: n}, (_, i) =>
+    `<i style="${i < lit ? `background:${color};transition-delay:${i * 22}ms` : ""}"></i>`).join("");
+}
+
+/* ================================================= recorder (single state machine)
+   Records raw PCM from the microphone and saves it as a 16-bit WAV file in the browser.
+   No WebM/Opus codec in between: the server can always read it, even without ffmpeg.
+   (Falls back to MediaRecorder only if the Web Audio API is unavailable.) */
+function encodeWav(chunks, sr) {
+  const n = chunks.reduce((a, c) => a + c.length, 0);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, n * 2, true);
+  let o = 44;
+  for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) {
+    const s = Math.max(-1, Math.min(1, c[i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Blob([buf], {type: "audio/wav"});
+}
+
+const Rec = {
+  state: "idle", stream: null, ctx: null, proc: null, src: null, an: null, pcm: [], mr: null, chunks: [],
+  t0: 0, timerId: null, raf: null, ui: null, onDone: null,
+  async start(ui, onDone) {
+    if (this.state !== "idle") return;
+    this.state = "starting"; this.ui = ui; this.onDone = onDone;
+    ui.btn.disabled = true;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no mic api");
+      this.stream = await navigator.mediaDevices.getUserMedia(
+        {audio: {echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1}});
+    } catch (e) {
+      this.state = "idle"; ui.btn.disabled = false;
+      ui.timer.textContent = t("mic_blocked");
+      return;
+    }
+    this.pcm = []; this.chunks = []; this.mr = null;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC();
+      if (this.ctx.state === "suspended") await this.ctx.resume();
+      this.src = this.ctx.createMediaStreamSource(this.stream);
+      this.an = this.ctx.createAnalyser(); this.an.fftSize = 2048;
+      this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
+      this.proc.onaudioprocess = e => { if (this.state === "recording") this.pcm.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      const mute = this.ctx.createGain(); mute.gain.value = 0;          // keep the node running without echoing the mic
+      this.src.connect(this.an); this.src.connect(this.proc); this.proc.connect(mute); mute.connect(this.ctx.destination);
+    } catch (e) {                                                        // very old browser: compressed fallback
+      if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; }
+      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg", "audio/mp4"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+      this.mr = new MediaRecorder(this.stream, mime ? {mimeType: mime} : undefined);
+      this.mr.ondataavailable = ev => ev.data.size && this.chunks.push(ev.data);
+      this.mr.onstop = () => this._finish();
+      this.mr.start(250);
+    }
+    this.state = "recording"; this.t0 = performance.now();
+    ui.btn.disabled = false; ui.btn.classList.add("live"); ui.btn.innerHTML = ICON_STOP;
+    ui.timer.classList.add("live");
+    if (ui.lamp) setLamp(ui.lamp, "lamp_rec");
+    if (ui.lamp === "lampIn") View.lampIn = "lamp_rec";
+    this.timerId = setInterval(() => {
+      const s = (performance.now() - this.t0) / 1000;
+      ui.timer.textContent = `● ${String(Math.floor(s / 60)).padStart(2, "0")}:${(s % 60).toFixed(1).padStart(4, "0")}`;
+      if (s >= MAX_REC_S) this.stop();
+    }, 100);
+    this._meter();
+  },
+  stop() {
+    if (this.state !== "recording") return;
+    this.state = "stopping";
+    clearInterval(this.timerId); this.timerId = null;
+    if (this.mr) { try { this.mr.stop(); } catch (e) { this._finish(); } }
+    else this._finish();
+  },
+  _finish() {
+    clearInterval(this.timerId); cancelAnimationFrame(this.raf);
+    const dur = (performance.now() - this.t0) / 1000;
+    let file = null;
+    if (this.mr) {
+      const type = this.mr.mimeType || "audio/webm";
+      const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+      const blob = new Blob(this.chunks, {type});
+      if (blob.size) file = new File([blob], `recording.${ext}`, {type});
+    } else if (this.pcm.length && this.ctx) {
+      file = new File([encodeWav(this.pcm, this.ctx.sampleRate)], "recording.wav", {type: "audio/wav"});
+    }
+    try { if (this.proc) this.proc.disconnect(); if (this.src) this.src.disconnect(); } catch (e) {}
+    if (this.ctx) { this.ctx.close().catch(() => {}); }
+    if (this.stream) this.stream.getTracks().forEach(tr => tr.stop());
+    const ui = this.ui, cb = this.onDone;
+    ui.btn.classList.remove("live"); ui.btn.innerHTML = ICON_MIC; ui.btn.disabled = false;
+    ui.timer.classList.remove("live");
+    ui.timer.textContent = t("rec_done", {s: dur.toFixed(1)});
+    if (ui.btn.id === "rec") View.timer = {k: "rec_done", v: {s: dur.toFixed(1)}};
+    if (ui.lamp) setLamp(ui.lamp, file ? "lamp_loaded" : "lamp_idle");
+    this.state = "idle"; this.stream = null; this.mr = null; this.ctx = null; this.proc = null; this.src = null; this.an = null; this.pcm = [];
+    if (file && cb) cb(file, dur);
+  },
+  _meter() {
+    if (this.ui.btn.id !== "rec" || !this.an) return;
+    const an = this.an, buf = new Float32Array(an.fftSize), cv = $("wave"), col = cssVar("--ai");
+    $("preview").classList.add("on");
+    const draw = () => {
+      if (this.state !== "recording") return;
+      an.getFloatTimeDomainData(buf);
+      const c = prepCanvas(cv), w = cv.width, h = cv.height;
+      c.strokeStyle = col; c.lineWidth = 2 * (window.devicePixelRatio || 1); c.beginPath();
+      for (let x = 0; x < w; x++) { const v = buf[Math.floor(x * buf.length / w)]; c.lineTo(x, h / 2 - v * h * 0.9); }
+      c.stroke();
+      this.raf = requestAnimationFrame(draw);
+    };
+    draw();
+  }
+};
+$("rec").innerHTML = ICON_MIC; $("rec2").innerHTML = ICON_MIC;
+
+/* ================================================= check tab */
+let current = null, currentIsMic = false, busy = false;
+
+function resetResult() {
+  View.result = null; setNeedle(0); $("gnum").textContent = "—"; $("gnum").style.color = "";
+  $("result").classList.remove("on"); $("details").classList.remove("on"); $("empty").classList.remove("hidden");
+  View.lampOut = "lamp_idle";
+}
+function setAudio(file, label, fromMic = false) {
+  current = file; currentIsMic = fromMic;
+  $("preview").classList.add("on");
+  View.fname = {...label, size: `${(file.size / 1024).toFixed(0)} KB`};
+  $("player").src = URL.createObjectURL(file);
+  $("analyze").disabled = false;
+  View.lampIn = "lamp_loaded";
+  resetResult();
+  setStatus("st_ready");
+  drawFileWave(file, $("wave"));
+}
+$("rec").onclick = () => Rec.state === "recording" ? Rec.stop()
+  : Rec.start({btn: $("rec"), timer: $("timer"), lamp: "lampIn"}, (f, d) => {
+      if (d < 1.2) { setStatus("st_short", true); return; }
+      setAudio(f, {k: "mic_rec_name", v: {s: d.toFixed(1)}}, true);
+    });
+$("file").onchange = e => { const f = e.target.files[0]; if (f) pickFile(f); e.target.value = ""; };
+function pickFile(f) {
+  if (f.size > 25 * 1024 * 1024) return setStatus("st_big", true);
+  if (f.type && !f.type.startsWith("audio/") && !f.type.startsWith("video/")) return setStatus("st_notaudio", true);
+  setAudio(f, {raw: f.name});
+}
+const drop = $("drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("drag"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("drag"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) pickFile(f); });
+document.querySelectorAll(".sample").forEach(b => b.onclick = async () => {
+  const r = await fetch(b.dataset.src); const blob = await r.blob();
+  const name = b.dataset.src.split("/").pop();
+  setAudio(new File([blob], name, {type: blob.type || "audio/wav"}), {k: "sample_name", suffix: b.textContent.trim()});
+});
+$("clear").onclick = () => {
+  current = null; $("preview").classList.remove("on"); $("player").removeAttribute("src");
+  $("analyze").disabled = true; View.fname = null; View.lampIn = "lamp_idle"; resetResult(); setStatus("st_start");
+};
+
+$("analyze").onclick = async () => {
+  if (!current || busy) return;
+  busy = true; $("analyze").disabled = true;
+  $("analyze").innerHTML = `<span class="spinner"></span>${t("analyzing")}`;
+  setLamp("lampOut", "lamp_busy"); setStatus(null);
+  const fd = new FormData(); fd.append("audio", current, current.name);
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
+    const r = await fetch("/analyze", {method: "POST", body: fd, signal: ctrl.signal});
+    clearTimeout(to);
+    let d; try { d = await r.json(); } catch { throw Object.assign(new Error("Could not process"), {server: true}); }
+    if (!r.ok) throw Object.assign(new Error(d.error || "Server error"), {server: true});
+    showResult(d);
+  } catch (e) {
+    View.lampOut = View.result ? "lamp_done" : "lamp_idle";
+    if (e.name === "AbortError") setStatus("st_timeout", true);
+    else if (e.message === "Failed to fetch") setStatus("st_server", true);
+    else { const k = serverError(e.message); setStatus(k ? {k} : (e.server ? {raw: e.message} : {k: "err_generic"}), true); }
+  } finally {
+    busy = false; $("analyze").disabled = !current; View.render();
+  }
+};
+
+function paintVerdict(d) {
+  const isAi = d.prediction !== "Human", unsure = d.confidence === "low";
+  const pb = d.playback, played = pb !== null && pb !== undefined && pb >= 50;
+  const playedMic = played && d._mic && !isAi;
+  const kind = playedMic || unsure ? "warn" : isAi ? "ai" : "human";
+  $("stamp").className = "stamp " + kind;
+  $("stamp").textContent = t(playedMic ? "stamp_warn" : unsure ? "stamp_unsure" : isAi ? "stamp_ai" : "stamp_human");
+  $("verdict").textContent = playedMic ? t("v_played") : unsure ? t("v_unsure", {x: t(isAi ? "x_ai" : "x_human")}) : t(isAi ? "v_ai" : "v_human");
+  $("conf").textContent = t("conf", {c: t("c_" + d.confidence)});
+  $("dur").textContent = t("dur", {s: d.duration_s});
+  $("lat").textContent = t("lat", {ms: d.latency_ms});
+  $("unsureNote").textContent = unsure ? t("unsure_note") : "";
+  $("gnum").style.color = `var(--${kind})`;
+  $("pbwarn").innerHTML = t("pbwarn");
+  return {kind, played, pb};
+}
+
+function showResult(d) {
+  d._mic = currentIsMic;
+  View.result = d; View.lampOut = "lamp_done";
+  $("empty").classList.add("hidden");
+  $("result").classList.remove("on"); void $("result").offsetWidth; $("result").classList.add("on");
+  $("details").classList.add("on");
+  const {played, pb} = paintVerdict(d);
+  setNeedle(0); requestAnimationFrame(() => requestAnimationFrame(() => setNeedle(d.ai)));
+  const t0 = performance.now(), from = 0;
+  const count = now => { const k = Math.min(1, (now - t0) / 900); $("gnum").textContent = (from + (d.ai - from) * (1 - Math.pow(1 - k, 3))).toFixed(1) + "%"; if (k < 1) requestAnimationFrame(count); };
+  requestAnimationFrame(count);
+  $("anum").textContent = d.ai + "%"; $("hnum").textContent = d.human + "%";
+  led($("aled"), d.ai, "var(--ai)"); led($("hled"), d.human, "var(--human)");
+  const hasPb = pb !== null && pb !== undefined;
+  $("pbrow").classList.toggle("hidden", !hasPb); $("pbwarn").classList.toggle("hidden", !played);
+  if (hasPb) { $("pnum").textContent = pb + "%"; led($("pled"), pb, "var(--warn)"); }
+  const n = d.timeline.length;
+  $("timeline").innerHTML = d.timeline.map((p, i) =>
+    `<div title="${i}–${i + 2} s: ${p}%" style="height:${Math.max(p, 4)}%;background:${p >= 50 ? "var(--ai)" : "var(--human)"};animation-delay:${i * 45}ms"></div>`).join("");
+  const every = n <= 16 ? 1 : n <= 40 ? 5 : 10;
+  $("ticks").innerHTML = d.timeline.map((_, i) => `<span>${i % every === 0 ? i + "s" : ""}</span>`).join("");
+  $("fbStatus").textContent = ""; document.querySelectorAll("#fb button").forEach(x => x.disabled = false);
+  View.render();
+  if (window.innerWidth <= 900) $("result").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+document.querySelectorAll("#fb button").forEach(b => b.onclick = async () => {
+  if (!current) return;
+  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("label", b.dataset.label);
+  document.querySelectorAll("#fb button").forEach(x => x.disabled = true);
+  try {
+    const r = await fetch("/feedback", {method: "POST", body: fd}); const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $("fbStatus").textContent = "✓ " + t("fb_saved", {l: t(b.dataset.label === "ai" ? "fb_ai" : "fb_human"), n: d.total_feedback});
+  } catch (e) { $("fbStatus").textContent = e.message; document.querySelectorAll("#fb button").forEach(x => x.disabled = false); }
+});
+
+/* ================================================= collect tab */
+let collected = null;
+function nextSentence() { $("sentence").textContent = SENTENCES.length ? SENTENCES[Math.floor(Math.random() * SENTENCES.length)] : t("c_say"); }
+$("next").onclick = nextSentence; nextSentence();
+$("rec2").onclick = () => Rec.state === "recording" ? Rec.stop()
+  : Rec.start({btn: $("rec2"), timer: $("timer2"), lamp: "lampCol"}, (f, d) => {
+      collected = f; $("player2").src = URL.createObjectURL(f); $("player2").classList.remove("hidden");
+      $("save").disabled = d < 1.2; $("cstatus").textContent = t(d < 1.2 ? "c_too_short" : "c_listen");
+      $("cstatus").classList.toggle("err", d < 1.2);
+    });
+try { $("speaker").value = localStorage.getItem("vox_speaker") || ""; } catch (e) {}
+$("save").onclick = async () => {
+  if (!collected) return;
+  $("save").disabled = true;
+  const fd = new FormData(); fd.append("audio", collected, collected.name);
+  fd.append("speaker", $("speaker").value); fd.append("label", $("label").value);
+  try {
+    const r = await fetch("/collect", {method: "POST", body: fd}); const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    try { localStorage.setItem("vox_speaker", $("speaker").value); } catch (e) {}
+    $("cstatus").textContent = "✓ " + t("c_saved", {f: d.saved, n: d.count_for_speaker});
+    $("cstatus").classList.remove("err");
+    collected = null; $("player2").classList.add("hidden"); nextSentence(); loadStats();
+  } catch (e) { $("cstatus").textContent = e.message; $("cstatus").classList.add("err"); $("save").disabled = false; }
+};
+async function loadStats() {
+  try {
+    const d = await (await fetch("/stats")).json();
+    $("stats").innerHTML = [["k_hf", d.human_files], ["k_hs", d.human_speakers], ["k_af", d.ai_files], ["k_av", d.ai_voices]]
+      .map(([k, v]) => `<div class="stat"><b>${v}</b><span>${t(k)}</span></div>`).join("");
+  } catch (e) {}
+}
+
+/* ================================================= about tab */
+const esc = x => String(x).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+async function loadAbout() {
+  let d; try { d = await (await fetch("/about")).json(); } catch (e) { return; }
+  if (d.data && d.data.human) {
+    $("dstats").innerHTML = [["k_hr", d.data.human.files], ["k_hg", d.data.human.groups], ["k_hm", d.data.human.minutes],
+      ["k_ar", d.data.ai.files], ["k_ag", d.data.ai.groups], ["k_am", d.data.ai.minutes]]
+      .map(([k, v]) => `<div class="stat"><b>${v}</b><span>${t(k)}</span></div>`).join("");
+  }
+  if (d.experiments.length) {
+    const f = x => x === "" || isNaN(+x) ? "–" : (+x).toFixed(3);
+    $("exps").innerHTML = `<tr><th>#</th><th>Approach</th><th>What changed</th><th class="num">Acc</th><th class="num">F1</th>
+      <th class="num">ROC-AUC</th><th class="num">EER ↓</th><th class="num">ms / win</th></tr>` +
+      d.experiments.map(r => `<tr class="${r.id === d.selected ? "sel" : ""}"><td>${esc(r.id)}${r.id === d.selected ? " ✔" : ""}</td>
+        <td>${esc(r.approach)}</td><td class="small">${esc(r.changed)}</td><td class="num">${f(r.acc)}</td><td class="num">${f(r.f1)}</td>
+        <td class="num">${f(r.auc)}</td><td class="num">${f(r.eer)}<span class="ebar" style="width:${Math.round(Math.min(+r.eer || 0, .6) * 80)}px"></span></td>
+        <td class="num">${esc(r.ms_per_window)}</td></tr>`).join("");
+  } else $("exps").innerHTML = '<tr><td class="small">Run train.py to fill this table.</td></tr>';
+  if (d.breakdown) {
+    const pc = v => v === null || v === undefined || isNaN(v) ? "–" : (v * 100).toFixed(1) + "%";
+    const bar = v => v === null || v === undefined ? "" : `<span class="ebar" style="width:${Math.round(v * 60)}px;background:${v >= .9 ? "var(--human)" : v >= .75 ? "var(--warn)" : "var(--ai)"}"></span>`;
+    $("bdAtt").innerHTML = `<tr><th>Type</th><th class="num">N</th><th class="num">Correct</th></tr>` +
+      d.breakdown.attack.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${r.n}</td><td class="num">${pc(r.acc)}${bar(r.acc)}</td></tr>`).join("");
+    $("bdLang").innerHTML = `<tr><th>Lang</th><th class="num">Human ✓</th><th class="num">AI caught</th></tr>` +
+      d.breakdown.lang.map(r => `<tr><td>${esc(r.key)}</td><td class="num">${pc(r.human_acc)}</td><td class="num">${pc(r.ai_acc)}</td></tr>`).join("");
+    $("bd").classList.remove("hidden");
+  }
+  if (d.playback && d.playback.results) {
+    const pc = v => v === undefined ? "–" : (v * 100).toFixed(1) + "%";
+    $("pbtbl").innerHTML = `<tr><th>Model</th><th class="num">EER (real)</th><th class="num">Live accepted</th><th class="num">Replay caught</th></tr>` +
+      Object.entries(d.playback.results).map(([n, r]) => `<tr class="${n === d.playback.approach ? "sel" : ""}"><td>${esc(n)}${n === d.playback.approach ? " ✔" : ""}</td>
+        <td class="num">${pc(r.real_eer)}</td><td class="num">${pc(r.real_live_ok)}</td><td class="num">${pc(r.real_replay_caught)}</td></tr>`).join("");
+    $("pbnote").textContent = t("pb_counts", {r: d.playback.n_real_replays, l: d.playback.n_live}) + " " + t(d.playback.enabled ? "pb_on" : "pb_off");
+    $("pbcard").classList.remove("hidden");
+  }
+  const ts = Date.now();
+  $("figsBody").innerHTML = (d.roc ? `<h2 class="sec">${t("a_roc")}</h2><img class="fig" src="/results/roc_best.png?${ts}" alt="ROC">` : "") +
+    (d.prep ? `<h2 class="sec" style="margin-top:18px">${t("a_prep")}</h2><img class="fig" src="/results/preprocessing_example.png?${ts}" alt="preprocessing">` : "");
+  $("figs").classList.toggle("hidden", !d.roc && !d.prep);
+}
+
+/* ================================================= drawing helpers */
+function prepCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth * dpr, h = cv.clientHeight * dpr;
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const c = cv.getContext("2d"); c.clearRect(0, 0, w, h); return c;
+}
+async function drawFileWave(file, cv) {
+  let ctx;
+  try {
+    ctx = new AudioContext();
+    const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+    const v = buf.getChannelData(0), c = prepCanvas(cv), w = cv.width, h = cv.height;
+    const step = Math.max(1, Math.floor(v.length / w)); let peak = 1e-6;
+    for (let i = 0; i < v.length; i += 64) peak = Math.max(peak, Math.abs(v[i]));
+    c.fillStyle = cssVar("--ink");
+    const bw = Math.max(2, Math.round(3 * (window.devicePixelRatio || 1)));
+    for (let x = 0; x < w; x += bw + 1) {
+      let mx = 0; const s = x * step;
+      for (let i = s; i < s + step * bw && i < v.length; i += 4) mx = Math.max(mx, Math.abs(v[i]));
+      const bh = Math.max(1, (mx / peak) * h * 0.85); c.fillRect(x, (h - bh) / 2, bw, bh);
+    }
+  } catch (e) { prepCanvas(cv); }
+  finally { if (ctx) ctx.close().catch(() => {}); }
+}
+
+document.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || e.repeat || e.ctrlKey || e.metaKey) return;
+  if (!$("tab-about").classList.contains("hidden")) return;
+  if (e.key === "r" || e.key === "R") ($("tab-check").classList.contains("hidden") ? $("rec2") : $("rec")).click();
+  if (e.key === "Enter" && !$("analyze").disabled && !$("tab-check").classList.contains("hidden")) $("analyze").click();
+});
+window.addEventListener("beforeunload", () => Rec.stop());
+
+/* ================================================= server health (shown as a banner, re-checked every 15 s) */
+let health = {ok: true};
+function paintBanner() {
+  const b = $("banner");
+  b.textContent = health.down ? t("srv_down") : !health.ok ? t("srv_bad", {e: health.error || "?"}) : "";
+  b.classList.toggle("hidden", health.ok && !health.down);
+}
+async function checkHealth() {
+  try {
+    const r = await fetch("/health", {cache: "no-store"});
+    health = await r.json(); health.down = false;
+  } catch (e) { health = {ok: false, down: true}; }
+  paintBanner();
+}
+checkHealth(); setInterval(checkHealth, 15000);
+applyLang();
+</script>
+</body>
+</html>

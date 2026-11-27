@@ -1,0 +1,114 @@
+{
+ "attack": [
+  {
+   "key": "human",
+   "name": "Real human",
+   "n": 29220,
+   "acc": 0.95927446954141
+  },
+  {
+   "key": "edge",
+   "name": "Neural TTS (Microsoft)",
+   "n": 8076,
+   "acc": 0.9032937097573056
+  },
+  {
+   "key": "feedback",
+   "name": "User-reported mistakes",
+   "n": 77,
+   "acc": 0.3246753246753247
+  },
+  {
+   "key": "gtts",
+   "name": "Neural TTS (Google)",
+   "n": 1500,
+   "acc": 0.8073333333333333
+  },
+  {
+   "key": "other",
+   "name": "Other AI",
+   "n": 27,
+   "acc": 0.4444444444444444
+  },
+  {
+   "key": "piper",
+   "name": "Neural TTS (Piper / VITS)",
+   "n": 1800,
+   "acc": 0.8233333333333334
+  },
+  {
+   "key": "replay",
+   "name": "AI played through a real speaker",
+   "n": 126,
+   "acc": 0.2777777777777778
+  },
+  {
+   "key": "sapi",
+   "name": "Classic TTS (Windows SAPI)",
+   "n": 180,
+   "acc": 0.7611111111111111
+  },
+  {
+   "key": "vcclassic",
+   "name": "Voice changer: speed+pitch",
+   "n": 1675,
+   "acc": 0.7182089552238806
+  },
+  {
+   "key": "vcgender",
+   "name": "Voice changer: formant / gender",
+   "n": 2579,
+   "acc": 0.8929817758821249
+  },
+  {
+   "key": "vcpitch",
+   "name": "Voice changer: pitch shift",
+   "n": 3118,
+   "acc": 0.9576651699807569
+  },
+  {
+   "key": "vcrobot",
+   "name": "Voice changer: robot",
+   "n": 1089,
+   "acc": 0.9889807162534435
+  },
+  {
+   "key": "vocoder",
+   "name": "Vocoder resynthesis",
+   "n": 2173,
+   "acc": 0.9217671421997239
+  },
+  {
+   "key": "xtts",
+   "name": "Voice cloning (XTTS-v2)",
+   "n": 2619,
+   "acc": 0.8350515463917526
+  }
+ ],
+ "lang": [
+  {
+   "key": "en",
+   "n": 22305,
+   "human_acc": 0.942294402211472,
+   "ai_acc": 0.91080249790288
+  },
+  {
+   "key": "ru",
+   "n": 16507,
+   "human_acc": 0.9771747991149412,
+   "ai_acc": 0.8056818181818182
+  },
+  {
+   "key": "team",
+   "n": 704,
+   "human_acc": 0.5217391304347826,
+   "ai_acc": 0.651685393258427
+  },
+  {
+   "key": "uz",
+   "n": 14743,
+   "human_acc": 0.9864269141531322,
+   "ai_acc": 0.9193205944798302
+  }
+ ]
+}

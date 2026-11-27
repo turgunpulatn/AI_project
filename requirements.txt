@@ -1,0 +1,16 @@
+# --- needed to run the demo (python app.py) and train.py ---
+flask
+librosa
+numpy
+scipy
+scikit-learn
+joblib
+soundfile
+matplotlib
+torch            # GPU (NVIDIA): pip install torch --index-url https://download.pytorch.org/whl/cu126
+
+# --- only needed to REBUILD the AI half of the dataset (scripts/generate_ai.py) ---
+# edge-tts        # Microsoft neural voices
+# gTTS            # Google TTS
+# piper-tts       # Piper / VITS offline TTS
+# coqui-tts       # XTTS-v2 voice cloning (Coqui CPML licence, non-commercial); also: transformers<5, pypinyin

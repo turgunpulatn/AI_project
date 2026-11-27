@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoxCheck AI Detector</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d19;color:#eef2ff;font-family:Arial,sans-serif}
+main{max-width:850px;margin:55px auto;padding:20px}
+header{margin-bottom:35px}
+h1{font-size:42px;color:#987cff;margin-bottom:8px}
+p{color:#9aa8c4;line-height:1.6}
+.card{background:#131c30;border:1px solid #283650;border-radius:20px;padding:28px;margin-bottom:20px}
+button{background:#7659ff;color:white;border:0;padding:13px 20px;border-radius:10px;cursor:pointer;margin:8px 5px 8px 0;font-size:15px}
+button:disabled{opacity:.5}
+input{margin:20px 0;color:white}
+audio{width:100%;margin:15px 0}
+.result{display:none;background:#0b1425;padding:20px;border-radius:14px;margin-top:20px}
+.bar{height:12px;background:#293650;border-radius:10px;margin:10px 0 20px;overflow:hidden}
+.fill{height:100%;background:#9276ff;width:0;transition:width .5s}
+#status{margin-top:15px}
+canvas{width:100%;height:100px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>◉ VoxCheck</h1>
+<p>AI Voice Authenticity Detection Platform</p>
+</header>
+
+<section class="card">
+<h2>Voice Analysis</h2>
+<p>Запишите голос или загрузите аудиофайл.</p>
+
+<button id="start">🎙 Начать запись</button>
+<button id="stop" disabled>■ Остановить</button>
+
+<br>
+<input type="file" id="file" accept="audio/*">
+<audio id="player" controls></audio>
+<canvas id="wave"></canvas>
+
+<br>
+<button id="analyze">Analyze Voice</button>
+<p id="status">Waiting for audio...</p>
+
+<div class="result" id="result">
+<h2 id="prediction"></h2>
+<p>Human: <span id="human"></span>%</p>
+<div class="bar"><div class="fill" id="humanBar"></div></div>
+<p>AI-generated: <span id="ai"></span>%</p>
+<div class="bar"><div class="fill" id="aiBar"></div></div>
+<p id="warning"></p>
+</div>
+</section>
+</main>
+
+<script>
+let recorder;
+let chunks=[];
+let blob=null;
+
+const player=document.getElementById("player");
+const status=document.getElementById("status");
+
+document.getElementById("file").onchange=e=>{
+    blob=e.target.files[0];
+    if(blob){
+        player.src=URL.createObjectURL(blob);
+        status.textContent="Audio loaded.";
+        drawWave(blob);
+    }
+};
+
+document.getElementById("start").onclick=async()=>{
+    try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        chunks=[];
+        recorder=new MediaRecorder(stream);
+
+        recorder.ondataavailable=e=>chunks.push(e.data);
+
+        recorder.onstop=()=>{
+            blob=new Blob(chunks,{type:recorder.mimeType});
+            player.src=URL.createObjectURL(blob);
+            stream.getTracks().forEach(t=>t.stop());
+            drawWave(blob);
+            status.textContent="Recording completed.";
+        };
+
+        recorder.start();
+        document.getElementById("start").disabled=true;
+        document.getElementById("stop").disabled=false;
+        status.textContent="Recording...";
+    }catch(e){
+        status.textContent="Microphone access denied.";
+    }
+};
+
+document.getElementById("stop").onclick=()=>{
+    if(recorder&&recorder.state==="recording")recorder.stop();
+    document.getElementById("start").disabled=false;
+    document.getElementById("stop").disabled=true;
+};
+
+document.getElementById("analyze").onclick=async()=>{
+    if(!blob){
+        status.textContent="Record or upload audio first.";
+        return;
+    }
+
+    status.textContent="Analyzing audio...";
+    const form=new FormData();
+    form.append("audio",blob,"recording.webm");
+
+    try{
+        const response=await fetch("/analyze",{method:"POST",body:form});
+        const data=await response.json();
+
+        if(!response.ok)throw new Error(data.error);
+
+        document.getElementById("result").style.display="block";
+        document.getElementById("prediction").textContent=data.prediction;
+        document.getElementById("human").textContent=data.human;
+        document.getElementById("ai").textContent=data.ai;
+        document.getElementById("humanBar").style.width=data.human+"%";
+        document.getElementById("aiBar").style.width=data.ai+"%";
+        document.getElementById("warning").textContent=data.warning;
+        status.textContent="Analysis completed.";
+
+    }catch(e){
+        status.textContent=e.message;
+    }
+};
+
+async function drawWave(file){
+    const ctx=new AudioContext();
+    try{
+        const buffer=await ctx.decodeAudioData(await file.arrayBuffer());
+        const values=buffer.getChannelData(0);
+        const canvas=document.getElementById("wave");
+        const c=canvas.getContext("2d");
+        canvas.width=canvas.clientWidth;
+        canvas.height=100;
+        c.clearRect(0,0,canvas.width,100);
+        c.beginPath();
+
+        for(let x=0;x<canvas.width;x++){
+            const i=Math.floor(x*values.length/canvas.width);
+            const v=values[i];
+            c.moveTo(x,50-v*45);
+            c.lineTo(x,50+v*45);
+        }
+        c.strokeStyle="#9276ff";
+        c.stroke();
+    }catch(e){
+        status.textContent="Audio loaded; waveform unavailable for this format.";
+    }finally{
+        await ctx.close();
+    }
+}
+</script>
+</body>
+</html>

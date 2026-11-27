@@ -1,0 +1,151 @@
+# VoxCheck — anti-fraud AI voice detector (Uzbek, English, Russian)
+
+VoxCheck tells whether a voice recording is a **real person** or **fake**: text-to-speech, a cloned voice,
+or a voice changed with a voice-changer app. Phone scammers use all three ("mom, I lost my phone, send money",
+"this is your bank's security service..."). VoxCheck works in **Uzbek, English and Russian**.
+
+Pipeline: **own multilingual dataset → cleaning + attack simulation → 10 compared models → own CNN → web app**
+
+## Quick start (run the demo)
+
+```powershell
+pip install -r requirements.txt
+python app.py
+```
+Open http://127.0.0.1:5000, then record from the mic, upload a file, or try a sample.
+On start the app runs a self-test (one sample through decoding and the model) and prints `Self-test: OK`.
+If port 5000 is already taken, for example by an older VoxCheck window, the app refuses to start and prints the process ID to stop.
+Use `python app.py --port 5050` to choose another port. `http://127.0.0.1:5000/health` shows whether the server can analyse audio.
+The page records the microphone as plain WAV, so recordings never depend on a browser codec. If ffmpeg fails, the server decodes with libsndfile instead.
+The app loads the saved model from `models/` and never retrains during the demo.
+It runs on CPU, so no GPU is needed for the demo.
+**ffmpeg** is not in the repo (too large). Install it once with `winget install Gyan.FFmpeg` (or put an ffmpeg build in `ffmpeg-*/bin`).
+Without ffmpeg the app still works for microphone recordings and wav / mp3 / ogg / flac uploads, but not for webm / m4a.
+
+**Not in the repo:** `dataset/` (about 27k audio files, plus team voice recordings, which are personal data) and `data/processed/`.
+The trained models in `models/` are included, so the demo runs right after cloning. To retrain, get `dataset/` from the team's shared drive.
+
+Tests: `python tests/test_voxcheck.py` checks decoding, silence and short-clip rejection, augmentation, file-name metadata and all web endpoints.
+
+## Results
+
+**Languages: Uzbek, English, Russian only.** Other languages are skipped in `prepare_data.py`.
+
+Dataset used for training: **17,917 recordings** (9,640 human, 8,277 AI) in uz / en / ru, plus team microphone recordings.
+Evaluation uses 5-fold cross-validation **grouped by speaker / TTS voice / sentence**, with metrics per recording.
+Test folds include the new phone-speaker and laptop-mic copies, which makes the test **harder** than in the earlier 14-language run,
+so the CV numbers below are not directly comparable to that run (its table is kept in `results/experiments_14lang.md`).
+
+| # | Approach | Accuracy | ROC-AUC | EER ↓ |
+|---|---|---|---|---|
+| E1 | Majority baseline | 0.539 | 0.500 | 0.500 |
+| E2 | Logistic regression (99 acoustic features) | 0.623 | 0.668 | 0.395 |
+| E3 | Random forest (first prototype) | 0.623 | 0.731 | 0.357 |
+| E4 | SVM (RBF) | 0.621 | 0.694 | 0.377 |
+| E5 | Random forest + augmentation | 0.750 | 0.845 | 0.249 |
+| E6 | VoxCNN (own), no augmentation | 0.684 | 0.785 | 0.302 |
+| E7 | VoxCNN small + augmentation | 0.847 | 0.925 | 0.156 |
+| E8 | VoxCNN + augmentation | 0.877 | 0.947 | 0.126 |
+| E10 | VoxCNN-wide + augmentation (own, from scratch) | 0.894 | 0.959 | 0.112 |
+| E11 | WavLM-Base+ features (pretrained, frozen) + own MLP | 0.903 | 0.963 | 0.103 |
+| E9 | Ensemble RF + VoxCNN-wide | 0.891 | 0.960 | 0.107 |
+| **E12** | **Ensemble VoxCNN-wide + WavLM classifier (selected)** | **0.921** | **0.977** | **0.077** |
+
+**Why E12:** it has the lowest EER (0.077). Our own CNN and the WavLM classifier make different mistakes, so averaging them
+cuts the error by about 25% compared with either one alone. The trade-off is the reused, frozen WavLM extractor (94M parameters).
+Analysis takes ~0.1–0.3 s per recording.
+
+**Hard holdout** (`scripts/holdout_eval.py`): 336 clips never seen in training by either model, scored on the same clips.
+They are unseen FLEURS speakers in uz / ru / en, TTS, voice changers, and simulated speaker replay of everything.
+
+| | before the mic fix | **after the mic fix (current)** |
+|---|---|---|
+| Accuracy | 98.2% | **99.4%** |
+| EER, all | 1.4% | **0.4%** |
+| EER, simulated speaker replay | 2.4% | **0.4%** |
+| uz / ru / en accuracy | 100 / 100 / 98.9% | 100 / 100 / 98.9% |
+
+**Real microphone (AI played from a phone into the laptop):** see `results/mic_channel.md`. Clean files are still caught 18/18.
+AI recordings captured through the mic went from 4/14 to 13/14 caught, but these recordings were used in training.
+On 11 new mic recordings the model had **never seen**, 7/7 humans were called human, but only 1 of 4 AI voices was caught (2/4 with the playback warning, before the playback fix below).
+**AI played into the mic remains the main open problem**, and more real phone→mic recordings are the next step.
+
+**What mattered most:**
+* Augmentation: CNN EER fell from 0.214 to 0.084.
+* Spectrogram CNN instead of hand-crafted features: EER fell from 0.183 to 0.074.
+* Self-supervised WavLM features plus the ensemble: EER fell from 0.073 to 0.051.
+* 7,500 extra uz/ru/en speakers with matching fakes: holdout EER fell from 7.3% to 3.5%.
+
+### Playback detector ("is the voice coming from a speaker?")
+A second model (`train_playback.py`, results in `results/playback.md`). It was trained on 148 real replays recorded into this laptop's microphone,
+including **18 AI voices played from a phone into the app**, 62 live recordings of a team member, and 2,500 simulated phone and laptop-speaker replays.
+Our own VoxCNN (P1) beat the WavLM version (P2): **EER 12.5% on real recordings**, and **85.7% of the phone→mic AI clips are flagged** (out-of-fold).
+Before a data bug was fixed, it flagged only 44.4% of them. It accepts 86% of live voices.
+In the app, a **microphone** recording that sounds played-back is shown as "Suspicious — voice played from a device".
+**Limitation:** the phone→mic clips come from a few phones in one room, so more phones, distances and rooms are the next step.
+
+## Data (what we collected / generated)
+
+| Class | Source | How | Files |
+|---|---|---|---|
+| Human | **Google FLEURS** (CC-BY-4.0), uz / ru / en used (14 downloaded) | `scripts/import_fleurs.py`: balanced by sentence, 2–25 s | 4532 |
+| Human | **LibriSpeech dev-clean** (CC-BY-4.0), 40 speakers | `scripts/import_librispeech.py` | 997 |
+| Human | **Team recordings** | app → *Collect data* tab | `me-*` |
+| AI | Microsoft Edge neural TTS, ~100 voices (uz / ru / en used) | `generate_ai.py --engine edge` | 3291 |
+| AI | Piper (VITS) offline neural TTS, 16 voices | `--engine piper` | 720 |
+| AI | Google TTS | `--engine gtts` | 540 |
+| AI | Windows SAPI | `--engine sapi` | 60 |
+| AI | **XTTS-v2 voice cloning** of real FLEURS/LibriSpeech speakers | `--engine xtts` | 555 |
+| AI | **Voice changers**: pitch shift, formant/gender shift, speed+pitch, robot | `scripts/make_fakes.py` (ffmpeg rubberband) | 1307 |
+| AI | Vocoder resynthesis (Griffin-Lim) | `scripts/make_fakes.py` | 375 |
+
+TTS text comes from FLEURS/LibriSpeech transcripts in the same language, so both classes say the same kind of sentences.
+Kyrgyz and Tajik have no native TTS voices, so Kazakh and Russian voices read them, which is what a scammer would do.
+A fake made from a real recording keeps the source's group, so the original and its fake are always in the same fold.
+
+## Reproduce
+
+```powershell
+# downloads (outside the repo, ../downloads_raw/):
+#   LibriSpeech dev-clean.tar.gz  https://www.openslr.org/12
+#   FLEURS data/<lang>/audio/dev.tar.gz + data/<lang>/dev.tsv  https://huggingface.co/datasets/google/fleurs
+python run_pipeline.py              # import + generate + prepare + train (re-runnable, skips existing files)
+python scripts/record_live.py --name <you> --minutes 5   # live mic speech (for the playback detector)
+python scripts/record_replay.py --n 300                  # real speaker replays (laptop plays audio!)
+python train_playback.py                                 # playback detector
+python scripts/holdout_eval.py --build --models models   # holdout check
+python run_pipeline.py --skip-data  # only prepare_data + train
+```
+Training on an RTX 4060 takes ~70 min for all 10 experiments. Install the CUDA build of PyTorch:
+`pip install torch --index-url https://download.pytorch.org/whl/cu126`.
+
+## Project structure
+
+| Path | What |
+|---|---|
+| `voxcheck/audio.py` | shared preprocessing (same in training and app); augmentation incl. **loudspeaker replay + room reverb**, phone line, codecs |
+| `voxcheck/model.py` | **VoxCNN**: strided stem + 4 conv blocks + mean/max pooling, written from scratch |
+| `voxcheck/meta.py` | file-name conventions → group, language, attack type |
+| `voxcheck/detector.py` | loads the saved model once, scores 2 s windows, returns probability + timeline |
+| `scripts/import_*.py`, `scripts/generate_ai.py`, `scripts/make_fakes.py` | data collection / generation |
+| `scripts/prepare_data.py` | decode → silence removal → loudness norm → augmentation → windows → log-mel + 99 features (streamed to disk) |
+| `train.py` | grouped 5-fold CV of 10 approaches, selection rule, per-language/per-attack report, final training (GPU + mixed precision) |
+| `app.py`, `templates/index.html` | web app: **Check a voice**, **Collect data**, **How it works** |
+| `results/` | `data_report.md`, `experiments.md`, `breakdown.json`, ROC + preprocessing figures |
+| `legacy/` | first prototype (random forest on MFCC) |
+
+## Reused (disclosed)
+
+* **Data:** FLEURS (Conneau et al., 2022, CC-BY-4.0); LibriSpeech (Panayotov et al., 2015, CC-BY-4.0).
+* **Tools used only to *generate* fakes:** Microsoft Edge TTS (edge-tts), Google TTS (gTTS), Piper voices (rhasspy/piper-voices),
+  Coqui XTTS-v2 (CPML licence, non-commercial), Windows SAPI, ffmpeg rubberband.
+* **Libraries:** PyTorch, scikit-learn, librosa, scipy, Flask, ffmpeg.
+* **WavLM-Base+** (Microsoft, MIT licence) is used as a frozen, pretrained feature extractor in E11/E12. Only the classifier on top is trained by us.
+  VoxCNN (E10) is trained from random initialisation on our data. No pretrained deepfake detector is used.
+
+## Known limitations / future work
+
+* Unseen fake generators, such as ElevenLabs or new cloning models, may be harder. More engines in `dataset/ai` improve generalisation.
+* Speed+pitch voice changers and Piper/VITS voices are the weakest categories. A linear-frequency or LFCC front-end that keeps high-frequency detail is the next experiment to try.
+* FLEURS has no speaker IDs (only sentence IDs), so a FLEURS speaker can appear in both train and test folds. LibriSpeech is split by speaker.
+* Real phone calls (8 kHz) are simulated, not recorded. Recording real calls with the **Collect data** tab would help most.

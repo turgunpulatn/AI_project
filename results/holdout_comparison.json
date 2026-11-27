@@ -1,0 +1,32 @@
+[
+ {
+  "approach": "Ensemble E10 + E11",
+  "EER all": 0.003875968992248069,
+  "EER clean": 0.0,
+  "EER speaker-replay": 0.003875968992248069,
+  "acc all": 0.9940476190476191,
+  "acc uz": 1.0,
+  "acc ru": 1.0,
+  "acc en": 0.9888888888888889,
+  "acc human": 1.0,
+  "acc ai-tts": 1.0,
+  "acc ai-vc": 0.9743589743589743,
+  "acc ai-xtts": NaN,
+  "folder": "models"
+ },
+ {
+  "approach": "Ensemble E10 + E11",
+  "EER all": 0.014162194394752525,
+  "EER clean": 0.0,
+  "EER speaker-replay": 0.02444841979725698,
+  "acc all": 0.9821428571428571,
+  "acc uz": 1.0,
+  "acc ru": 1.0,
+  "acc en": 0.9888888888888889,
+  "acc human": 1.0,
+  "acc ai-tts": 1.0,
+  "acc ai-vc": 0.9743589743589743,
+  "acc ai-xtts": NaN,
+  "folder": "models_backup_before_mic"
+ }
+]

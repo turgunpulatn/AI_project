@@ -1,0 +1,63 @@
+[22:27:53] waiting for generate_ai.py / make_fakes.py to finish
+[23:34:36] generation finished: human=13227 ai=13668
+[23:34:36] PREPARE start
+26890 files, 1 augmented copies each, <= 2 windows/version, 10 workers
+WavLM features on cuda
+# Data report
+
+| Class | Files | Skipped | Groups | Raw audio (min) | After cleaning (min) | Windows (incl. aug) |
+|---|---|---|---|---|---|---|
+| human | 13227 | 2 | 6448 | 2403.1 | 2053.6 | 52634 |
+| ai | 13663 | 4 | 4110 | 2179.0 | 1913.9 | 53416 |
+
+Saved 106050 windows -> data/processed/mel.npy + dataset.npz
+[23:51:24] PREPARE ok
+[23:51:24] TRAIN start
+  t = torch.from_numpy(np.ascontiguousarray(mel))
+spectrograms on: cuda:0
+WavLM features (106050, 4608) on: cuda:0
+windows=106050  files=26884  human=52634  ai=53416  device=cuda
+5-fold grouped cross-validation
+
+E1 Baseline (majority class)              acc=0.492 f1=0.000 auc=0.500 EER=0.500±0.000  EER(uz/en/ru)=0.500  EER(top-half)=0.500  (0.1s)
+E2 Logistic regression                    acc=0.731 f1=0.785 auc=0.770 EER=0.314±0.011  EER(uz/en/ru)=0.314  EER(top-half)=0.315  (2.1s)
+E3 Random forest (old demo)               acc=0.733 f1=0.792 auc=0.825 EER=0.288±0.006  EER(uz/en/ru)=0.288  EER(top-half)=0.288  (44.3s)
+E4 SVM (RBF)                              acc=0.732 f1=0.787 auc=0.788 EER=0.293±0.014  EER(uz/en/ru)=0.294  EER(top-half)=0.296  (16.1s)
+E5 Random forest + augmentation           acc=0.818 f1=0.828 auc=0.912 EER=0.183±0.002  EER(uz/en/ru)=0.186  EER(top-half)=0.185  (119.9s)
+E6 VoxCNN (own) - no augmentation         acc=0.790 f1=0.814 auc=0.889 EER=0.214±0.007  EER(uz/en/ru)=0.210  EER(top-half)=0.211  (398.9s)
+E7 VoxCNN (own) - small + augmentation    acc=0.894 f1=0.893 auc=0.961 EER=0.107±0.008  EER(uz/en/ru)=0.102  EER(top-half)=0.116  (626.3s)
+E8 VoxCNN (own) + augmentation            acc=0.917 f1=0.917 auc=0.974 EER=0.084±0.006  EER(uz/en/ru)=0.078  EER(top-half)=0.092  (745.2s)
+E10 VoxCNN-wide (own) + augmentation       acc=0.929 f1=0.929 auc=0.980 EER=0.074±0.007  EER(uz/en/ru)=0.068  EER(top-half)=0.078  (1374.0s)
+E11 WavLM-Base+ (pretrained, frozen) + own MLP acc=0.931 f1=0.930 auc=0.980 EER=0.073±0.007  EER(uz/en/ru)=0.066  EER(top-half)=0.079  (48.1s)
+E9 Ensemble E5 + E10                      acc=0.928 f1=0.928 auc=0.979 EER=0.073  EER(uz/en/ru)=0.067  EER(top-half)=0.077
+E12 Ensemble E10 + E11                     acc=0.948 f1=0.948 auc=0.988 EER=0.051  EER(uz/en/ru)=0.044  EER(top-half)=0.059
+
+Selected: E12 Ensemble E10 + E11  (lowest EER on uz/en/ru = 0.044)
+Retraining selected model on all data ...
+Saved -> C:\Users\LENOVO\Desktop\ρεμόÿ\pulat\ai\VoxCheck\models\voxcheck_model_0.pt
+Saved -> C:\Users\LENOVO\Desktop\ρεμόÿ\pulat\ai\VoxCheck\models\voxcheck_model_1_wavlm.pt
+window aggregation: mean  (EER mean=0.051, top-half=0.059)
+[00:51:23] TRAIN ok
+[00:51:23] PLAYBACK start
+real replays 130 | live mic recordings 62 | sampled for simulation 2500
+  500/2692
+  1000/2692
+  1500/2692
+  2000/2692
+  2500/2692
+windows: 16327  playback=8510  live/direct=7817  {np.str_('direct'): 7247, np.str_('live_mic'): 570, np.str_('real_replay'): 1282, np.str_('sim_replay'): 7228}
+P1 VoxCNN (own) on log-mel {'acc': 0.955, 'auc': 0.991, 'eer': 0.045, 'real_acc': 0.9, 'real_auc': 0.961, 'real_eer': 0.098, 'real_live_ok': 0.909, 'real_replay_caught': 0.896}
+P2 WavLM features + own MLP {'acc': 0.922, 'auc': 0.976, 'eer': 0.079, 'real_acc': 0.89, 'real_auc': 0.95, 'real_eer': 0.118, 'real_live_ok': 0.842, 'real_replay_caught': 0.912}
+selected: P1 VoxCNN (own) on log-mel
+real-recording EER 0.098 -> ENABLED in app
+Traceback (most recent call last):
+  File "C:\Users\LENOVO\Desktop\ρεμόÿ\pulat\ai\VoxCheck\train_playback.py", line 197, in <module>
+    main()
+  File "C:\Users\LENOVO\Desktop\ρεμόÿ\pulat\ai\VoxCheck\train_playback.py", line 193, in main
+    print("\n".join(md))
+  File "C:\Users\LENOVO\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1251.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2714' in position 369: character maps to <undefined>
+[00:57:00] PLAYBACK FAILED
+[00:57:00] ALL DONE

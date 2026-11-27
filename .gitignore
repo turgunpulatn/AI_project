@@ -1,0 +1,25 @@
+# ---- data: large or personal, never in git ----
+# The dataset (~27k files) and processed features are rebuilt with the commands in README.
+# Team voice recordings are personal data: share them through a private drive, not this public repo.
+dataset/
+data/processed/
+results/cv_cache.joblib
+static/samples/human-*
+
+# ---- third-party binaries (download ffmpeg yourself, see README) ----
+ffmpeg-*/
+
+# ---- local backups and scratch ----
+models_backup*/
+templates/index_old.html
+# voice clones of real people: keep local
+unseen_ai_test/
+
+# ---- python / editor ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+.claude/
+.vscode/
+.idea/

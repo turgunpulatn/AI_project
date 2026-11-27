@@ -1,0 +1,35 @@
+{
+  "approach": "P1 VoxCNN (own) on log-mel",
+  "trained_at": "2026-11-26 21:38",
+  "enabled": true,
+  "real_eer": 0.12469680913693629,
+  "threshold_real_eer": 0.2,
+  "n_real_replays": 148,
+  "n_live": 62,
+  "results": {
+    "P1 VoxCNN (own) on log-mel": {
+      "acc": 0.9271250151570268,
+      "auc": 0.9788480403850879,
+      "eer": 0.0726917052421311,
+      "real_acc": 0.8742718446601941,
+      "real_auc": 0.9345337336630167,
+      "real_eer": 0.12469680913693629,
+      "real_live_ok": 0.8614035087719298,
+      "real_replay_caught": 0.8791946308724832,
+      "phone_mic_caught": 0.8571428571428571,
+      "phone_mic_clips": 21
+    },
+    "P2 WavLM features + own MLP": {
+      "acc": 0.8969928458833515,
+      "auc": 0.9631807518946919,
+      "eer": 0.10379220050603774,
+      "real_acc": 0.8577669902912621,
+      "real_auc": 0.9175550453314494,
+      "real_eer": 0.1559225244318851,
+      "real_live_ok": 0.7859649122807018,
+      "real_replay_caught": 0.885234899328859,
+      "phone_mic_caught": 0.8095238095238095,
+      "phone_mic_clips": 21
+    }
+  }
+}
