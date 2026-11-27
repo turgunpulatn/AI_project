@@ -85,6 +85,20 @@ Analysis takes ~0.1–0.3 s per recording.
 The clips are new, but the 8 Microsoft TTS voices also appear in training, and the "speaker replay" copies use the same
 simulator as the training augmentation. So this shows the model is not just memorizing files. It does **not** show the model
 works on new voices or real devices. The real-microphone test below is the harder test.
+
+**Unseen voices and speakers** (`scripts/unseen_eval.py`, full table in `results/unseen_voices.md`). Nothing here is in training:
+new people from the FLEURS **test** split (training used train + dev), **Meta MMS-TTS**, a TTS engine we never trained on, and
+**6 Piper voices** we never trained on. Each clip was also scored as a simulated "phone speaker → laptop mic" copy.
+
+| | clean | phone→mic copy |
+|---|---|---|
+| New human speakers called human (uz / ru / en, 40 each) | **100%** | 95.0% |
+| MMS-TTS caught (uz 100%, ru 100%, en 90%) | **96.7%** | 61.1% |
+| New Piper voices caught (ru 66.7%, en 82.1%) | **74.1%** | 58.6% |
+| EER | **2.6%** | 17.9% |
+
+So the model generalises to a new engine on clean audio, but new voices played through a phone are often missed.
+More real phone→mic recordings of **many different** TTS voices are the most useful data to add.
 They are unseen FLEURS speakers in uz / ru / en, TTS, voice changers, and simulated speaker replay of everything.
 
 | | before the mic fix | **after the mic fix (current)** |
@@ -117,6 +131,11 @@ Also, 55 of the live clips are one team member. Each take is its own CV group, s
 train and test folds, and the 12.5% EER is likely optimistic. Live recordings from more people will fix this.
 Only feedback clips recorded with the **microphone** count as real speaker replays. Uploaded files were never played
 through a speaker, so the app now tags feedback as `feedback-mic-*` or `feedback-file-*`.
+
+**Before retraining the playback detector, record more replays.** The model in `models/` was trained on 148 real replays.
+Only 37 replay recordings plus 22 phone clips are left in `dataset/`; the others were removed in the uz/en/ru cleanup.
+A test retrain on that data on 2026-11-28 reached only 23.4% EER on real recordings. That is above the 20% limit, so
+`train_playback.py` would switch the warning off in the app. Run `scripts/record_replay.py` and record phone→mic clips first.
 
 ### Known limitations of the evaluation
 * FLEURS has no speaker IDs, so human FLEURS clips are grouped by **sentence**. The same FLEURS speaker can be in both
@@ -157,6 +176,7 @@ python scripts/record_live.py --name <you> --minutes 5   # live mic speech (for 
 python scripts/record_replay.py --n 300                  # real speaker replays (laptop plays audio!)
 python train_playback.py                                 # playback detector
 python scripts/holdout_eval.py --build --models models   # holdout check
+python scripts/unseen_eval.py --build                     # unseen voices / speakers check
 python run_pipeline.py --skip-data  # only prepare_data + train
 ```
 Training on an RTX 4060 takes ~70 min for all 10 experiments. Install the CUDA build of PyTorch:
