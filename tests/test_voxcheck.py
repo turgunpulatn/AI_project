@@ -144,6 +144,29 @@ def test_health_and_port_guard():
         s.close()
 
 
+def test_collect_needs_code_and_consent():
+    """Saving a recording: refused without consent, refused with a wrong code, saved + logged when both are right."""
+    import app as appmod
+    c = appmod.app.test_client()
+    wav = lambda: (io.BytesIO(_wav_bytes(_tone(3))), "r.wav")
+    old_code, old_dataset = appmod.ACCESS_CODE, appmod.DATASET
+    with tempfile.TemporaryDirectory() as td:
+        appmod.ACCESS_CODE, appmod.DATASET = "K7Q2", td
+        try:
+            base = {"speaker": "tester", "label": "human"}
+            r = c.post("/collect", data={**base, "code": "K7Q2", "audio": wav()}, content_type="multipart/form-data")
+            assert r.status_code == 403 and r.get_json()["need"] == "consent"
+            r = c.post("/collect", data={**base, "code": "nope", "consent": "yes", "audio": wav()}, content_type="multipart/form-data")
+            assert r.status_code == 403 and r.get_json()["need"] == "code"
+            r = c.post("/collect", data={**base, "code": "K7Q2", "consent": "yes", "audio": wav()}, content_type="multipart/form-data")
+            assert r.status_code == 200, r.get_json()
+            log = open(os.path.join(td, "consent_log.csv"), encoding="utf-8").read()
+            assert "tester" in log and r.get_json()["saved"].split("/")[-1] in log
+            assert c.get("/health").get_json()["code_required"] is True
+        finally:
+            appmod.ACCESS_CODE, appmod.DATASET = old_code, old_dataset
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in list(globals().items()):

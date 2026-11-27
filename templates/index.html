@@ -190,6 +190,10 @@ h2.sec{margin:0 0 6px;font:400 22px/1.2 var(--serif)}
 .ebar{display:inline-block;height:6px;background:var(--ink2);vertical-align:middle;margin-left:6px}
 img.fig{width:100%;border-radius:4px;border:1.5px solid var(--line2);background:#fff;margin-top:8px}
 .banner{margin:14px 0 0;padding:12px 14px;border:1.5px solid var(--ai);border-left-width:5px;border-radius:0;background:var(--ai-bg);font-size:14px}
+.contrib{border:1.5px dashed var(--line2);border-radius:4px;padding:12px 14px;margin:0 0 14px;display:grid;gap:10px;background:var(--panel2)}
+.codefield{display:grid;gap:4px;font:12px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);max-width:320px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;cursor:pointer}
+.consent input{width:18px;height:18px;margin-top:1px;accent-color:var(--ai);flex:none}
 footer{margin-top:26px;padding-top:12px;border-top:1.5px solid var(--ink);font:11px var(--mono);color:var(--faint);letter-spacing:.4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 </style>
 </head>
@@ -319,6 +323,11 @@ footer{margin-top:26px;padding-top:12px;border-top:1.5px solid var(--ink);font:1
     <div class="phead"><b><em>C</em><span data-i18n="c_title">Grow the dataset</span></b><span class="lamp" id="lampCol" data-i18n="lamp_idle">standby</span></div>
     <div class="pbody">
       <p class="sub" data-i18n="c_sub">Read the sentence aloud, listen back, then save.</p>
+      <div class="contrib" id="contrib">
+        <label class="codefield hidden" id="codeRow"><span data-i18n="c_code">Team access code</span>
+          <input type="text" id="accessCode" autocomplete="off" maxlength="64"></label>
+        <label class="consent"><input type="checkbox" id="consent"> <span data-i18n="c_consent">I agree that my voice recordings are stored and used to train and test VoxCheck.</span></label>
+      </div>
       <div class="prompt" id="sentence"></div>
       <button class="link" id="next" data-i18n="c_next">↻ another sentence</button>
       <div class="grid" style="margin-top:14px">
@@ -557,17 +566,23 @@ const I18N = {
 };
 
 const I18N_EXTRA = {
- en: {err_decode: "This file couldn't be read as audio. Try wav, mp3, ogg, m4a or webm.",
+ en: {c_code: "Team access code", c_consent: "I agree that my voice recordings are stored and used to train and test VoxCheck for our IUT course project. They are not published.",
+      err_code: "Wrong or missing team access code — ask the project owner.", err_consent: "Tick the consent box in the Collect data tab first.",
+      err_decode: "This file couldn't be read as audio. Try wav, mp3, ogg, m4a or webm.",
       err_speech: "Not enough speech — record at least 2 seconds of voice.", err_empty: "The recording is empty — check that the right microphone is selected.",
       err_big: "File is too large (max 25 MB).", err_generic: "Something went wrong on the server. Try again.",
       srv_bad: "The server can't analyse audio right now: {e}. Restart it with: python app.py",
       srv_down: "The VoxCheck server isn't running. Start it with: python app.py"},
- uz: {err_decode: "Bu faylni audio sifatida o'qib bo'lmadi. wav, mp3, ogg, m4a yoki webm bilan urinib ko'ring.",
+ uz: {c_code: "Jamoa kirish kodi", c_consent: "Ovoz yozuvlarim IUT kurs loyihamiz doirasida VoxCheck'ni o'qitish va sinash uchun saqlanishi va ishlatilishiga roziman. Ular ommaga e'lon qilinmaydi.",
+      err_code: "Jamoa kirish kodi noto'g'ri yoki kiritilmagan — loyiha egasidan so'rang.", err_consent: "Avval “Ma'lumot yig'ish” bo'limida rozilik belgisini qo'ying.",
+      err_decode: "Bu faylni audio sifatida o'qib bo'lmadi. wav, mp3, ogg, m4a yoki webm bilan urinib ko'ring.",
       err_speech: "Nutq yetarli emas — kamida 2 soniya gapiring.", err_empty: "Yozuv bo'sh — to'g'ri mikrofon tanlanganini tekshiring.",
       err_big: "Fayl juda katta (maks. 25 MB).", err_generic: "Serverda xatolik yuz berdi. Qayta urinib ko'ring.",
       srv_bad: "Server hozir audioni tahlil qila olmayapti: {e}. Qayta ishga tushiring: python app.py",
       srv_down: "VoxCheck serveri ishlamayapti. Ishga tushiring: python app.py"},
- ru: {err_decode: "Не удалось прочитать файл как аудио. Попробуйте wav, mp3, ogg, m4a или webm.",
+ ru: {c_code: "Код доступа команды", c_consent: "Я согласен(на), что мои записи голоса хранятся и используются для обучения и проверки VoxCheck в учебном проекте IUT. Они не публикуются.",
+      err_code: "Неверный или пустой код доступа — спросите у владельца проекта.", err_consent: "Сначала отметьте согласие во вкладке «Сбор данных».",
+      err_decode: "Не удалось прочитать файл как аудио. Попробуйте wav, mp3, ogg, m4a или webm.",
       err_speech: "Недостаточно речи — запишите хотя бы 2 секунды голоса.", err_empty: "Запись пустая — проверьте, выбран ли нужный микрофон.",
       err_big: "Файл слишком большой (макс. 25 МБ).", err_generic: "Ошибка на сервере. Попробуйте ещё раз.",
       srv_bad: "Сервер сейчас не может анализировать аудио: {e}. Перезапустите: python app.py",
@@ -897,11 +912,12 @@ function showResult(d) {
 
 document.querySelectorAll("#fb button").forEach(b => b.onclick = async () => {
   if (!current) return;
-  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("label", b.dataset.label);
+  if (!$("consent").checked) { $("fbStatus").textContent = t("err_consent"); return; }
+  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("label", b.dataset.label); addContrib(fd);
   document.querySelectorAll("#fb button").forEach(x => x.disabled = true);
   try {
     const r = await fetch("/feedback", {method: "POST", body: fd}); const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
+    if (!r.ok) throw new Error(d.need ? t("err_" + d.need) : d.error);
     $("fbStatus").textContent = "✓ " + t("fb_saved", {l: t(b.dataset.label === "ai" ? "fb_ai" : "fb_human"), n: d.total_feedback});
   } catch (e) { $("fbStatus").textContent = e.message; document.querySelectorAll("#fb button").forEach(x => x.disabled = false); }
 });
@@ -917,14 +933,25 @@ $("rec2").onclick = () => Rec.state === "recording" ? Rec.stop()
       $("cstatus").classList.toggle("err", d < 1.2);
     });
 try { $("speaker").value = localStorage.getItem("vox_speaker") || ""; } catch (e) {}
+function addContrib(fd) {
+  fd.append("code", $("accessCode").value.trim());
+  fd.append("consent", $("consent").checked ? "yes" : "no");
+}
+try {
+  $("accessCode").value = localStorage.getItem("vox_code") || "";
+  $("consent").checked = localStorage.getItem("vox_consent") === "v1";
+} catch (e) {}
+$("accessCode").addEventListener("change", () => { try { localStorage.setItem("vox_code", $("accessCode").value.trim()); } catch (e) {} });
+$("consent").addEventListener("change", () => { try { localStorage.setItem("vox_consent", $("consent").checked ? "v1" : ""); } catch (e) {} });
 $("save").onclick = async () => {
   if (!collected) return;
+  if (!$("consent").checked) { $("cstatus").textContent = t("err_consent"); $("cstatus").classList.add("err"); return; }
   $("save").disabled = true;
   const fd = new FormData(); fd.append("audio", collected, collected.name);
-  fd.append("speaker", $("speaker").value); fd.append("label", $("label").value);
+  fd.append("speaker", $("speaker").value); fd.append("label", $("label").value); addContrib(fd);
   try {
     const r = await fetch("/collect", {method: "POST", body: fd}); const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
+    if (!r.ok) throw new Error(d.need ? t("err_" + d.need) : d.error);
     try { localStorage.setItem("vox_speaker", $("speaker").value); } catch (e) {}
     $("cstatus").textContent = "✓ " + t("c_saved", {f: d.saved, n: d.count_for_speaker});
     $("cstatus").classList.remove("err");
@@ -1024,6 +1051,7 @@ async function checkHealth() {
   try {
     const r = await fetch("/health", {cache: "no-store"});
     health = await r.json(); health.down = false;
+    $("codeRow").classList.toggle("hidden", !health.code_required);
   } catch (e) { health = {ok: false, down: true}; }
   paintBanner();
 }

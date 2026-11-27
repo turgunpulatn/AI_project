@@ -27,6 +27,31 @@ The trained models in `models/` are included, so the demo runs right after cloni
 
 Tests: `python tests/test_voxcheck.py` checks decoding, silence and short-clip rejection, augmentation, file-name metadata and all web endpoints.
 
+## Working as a team
+
+**Code:** clone the repo, work on your own branch, open a pull request:
+```powershell
+git clone https://github.com/turgunpulatn/AI_project.git
+cd AI_project
+pip install -r requirements.txt
+git checkout -b <your-name>/<what-you-change>
+```
+
+**Recording voices from your own laptop or phone (no install needed).** The project owner runs:
+```powershell
+winget install --id Cloudflare.cloudflared      # once
+powershell -ExecutionPolicy Bypass -File scripts\share.ps1
+```
+This prints a temporary `https://….trycloudflare.com` link and a team **access code**. No domain or account is needed.
+Open the link, go to **Collect data**, enter the code, tick the consent box, record and save.
+Recordings are saved in `dataset/` on the owner's laptop, and each one adds a line to `dataset/consent_log.csv`.
+The link works only while the owner's window is open. HTTPS is required because browsers only allow the microphone on `https://` (or `localhost`).
+
+**What to record (most useful for the model):** your own voice with label *human*, and AI voices played **from your phone** into the
+microphone with label *ai*, in Uzbek, English and Russian. Use one speaker name per person.
+
+**Training** runs on the owner's GPU (`python run_pipeline.py --skip-data`, about 1 hour). Collected recordings are used in the next run.
+
 ## Results
 
 **Languages: Uzbek, English, Russian only.** Other languages are skipped in `prepare_data.py`.

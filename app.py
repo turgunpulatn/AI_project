@@ -1,10 +1,12 @@
 """VoxCheck web demo.   Run:  python app.py   ->  http://127.0.0.1:5000   (python app.py --port 5050 for another port)"""
+import hmac
 import logging
 import os
 import re
 import socket
 import sys
 import tempfile
+import threading
 import uuid
 
 from flask import Flask, jsonify, render_template, request
@@ -111,6 +113,39 @@ def analyze():
         return jsonify({"error": "Could not process this file."}), 500
 
 
+
+# ---------------- contributors: access code + consent ----------------
+# When the app is shared over the internet (scripts/share.ps1), saving recordings needs the team access code.
+# Set it with the environment variable VOX_ACCESS_CODE; without it (local use) no code is asked.
+ACCESS_CODE = os.environ.get("VOX_ACCESS_CODE", "").strip()
+CONSENT_VERSION = "v1"   # bump when the consent text on the page changes
+_consent_lock = threading.Lock()
+
+
+def contributor_error():
+    """None if this request may save a recording, else a (json, status) error response."""
+    if ACCESS_CODE and not hmac.compare_digest(request.form.get("code", "").strip(), ACCESS_CODE):
+        return jsonify({"error": "Wrong or missing team access code.", "need": "code"}), 403
+    if request.form.get("consent") != "yes":
+        return jsonify({"error": "Please confirm the consent checkbox first.", "need": "consent"}), 403
+    return None
+
+
+def log_consent(saved_path, speaker):
+    """dataset/consent_log.csv: who agreed, when, to which text version, for which file."""
+    import csv
+    import time
+    os.makedirs(DATASET, exist_ok=True)
+    path = os.path.join(DATASET, "consent_log.csv")
+    with _consent_lock:
+        new = not os.path.exists(path)
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            if new:
+                w.writerow(["time", "speaker", "file", "consent_version"])
+            w.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), speaker, saved_path, CONSENT_VERSION])
+
+
 @app.route("/collect", methods=["POST"])
 def collect():
     """Save a labelled recording into dataset/ (the team's own data collection tool)."""
@@ -121,6 +156,9 @@ def collect():
         return jsonify({"error": "Unknown label."}), 400
     if not speaker:
         return jsonify({"error": "Enter a speaker name first."}), 400
+    denied = contributor_error()
+    if denied:
+        return denied
     try:
         with Upload() as path:
             y = A.load_audio(path)
@@ -130,6 +168,7 @@ def collect():
         os.makedirs(out_dir, exist_ok=True)
         name = f"me-{speaker}__{uuid.uuid4().hex[:8]}.wav"
         A.save_wav(os.path.join(out_dir, name), y)
+        log_consent(f"dataset/{label}/{name}", speaker)
         n = sum(1 for f in os.listdir(out_dir) if f.startswith(f"me-{speaker}__"))
         return jsonify({"saved": f"dataset/{label}/{name}", "count_for_speaker": n})
     except ValueError as e:
@@ -142,6 +181,9 @@ def feedback():
     label = request.form.get("label")
     if label not in ("human", "ai"):
         return jsonify({"error": "Unknown label."}), 400
+    denied = contributor_error()
+    if denied:
+        return denied
     try:
         with Upload() as path:
             y = A.load_audio(path)
@@ -151,6 +193,7 @@ def feedback():
         os.makedirs(out_dir, exist_ok=True)
         name = f"me-feedback__feedback-{uuid.uuid4().hex[:8]}.wav"
         A.save_wav(os.path.join(out_dir, name), y)
+        log_consent(f"dataset/{label}/{name}", "feedback")
         n = sum(1 for d in ("human", "ai") for f in os.listdir(os.path.join(DATASET, d)) if "__feedback-" in f)
         return jsonify({"saved": f"dataset/{label}/{name}", "total_feedback": n})
     except ValueError as e:
@@ -214,7 +257,8 @@ def health():
     """Quick check that this server can really analyse audio (used by the page on load)."""
     return jsonify({"ok": detector is not None and health_error is None, "pid": os.getpid(),
                     "model": detector.meta.get("approach") if detector else None,
-                    "error": load_error if detector is None else health_error})
+                    "error": load_error if detector is None else health_error,
+                    "code_required": bool(ACCESS_CODE)})
 
 
 @app.errorhandler(413)
@@ -273,5 +317,6 @@ if __name__ == "__main__":
 
     print(" * Model:", detector.meta["approach"] if detector else "NOT LOADED - " + str(load_error))
     print(" * Self-test:", "OK - audio decoding and model work" if health_error is None else "FAILED - " + health_error)
+    print(" * Saving recordings:", "needs the team access code (VOX_ACCESS_CODE)" if ACCESS_CODE else "open (local use, no access code)")
     print(f" * Open  http://127.0.0.1:{port}\n")
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
