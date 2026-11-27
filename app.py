@@ -103,6 +103,8 @@ def index():
 def analyze():
     if detector is None:
         return jsonify({"error": "Model not loaded: " + load_error}), 503
+    if not code_ok():                       # shared over the internet -> only people with the team code
+        return jsonify({"error": "Wrong or missing team access code.", "need": "code"}), 403
     try:
         with Upload() as path:
             return jsonify(detector.analyze(path))
@@ -122,9 +124,20 @@ CONSENT_VERSION = "v1"   # bump when the consent text on the page changes
 _consent_lock = threading.Lock()
 
 
+def code_ok():
+    """True when no access code is set (local use) or the request carries the right one."""
+    return not ACCESS_CODE or hmac.compare_digest(request.form.get("code", "").strip(), ACCESS_CODE)
+
+
+@app.route("/check_code", methods=["POST"])
+def check_code():
+    """The page asks for the code once (when shared) and checks it here before showing the app."""
+    return (jsonify({"ok": True}), 200) if code_ok() else (jsonify({"error": "Wrong code.", "need": "code"}), 403)
+
+
 def contributor_error():
     """None if this request may save a recording, else a (json, status) error response."""
-    if ACCESS_CODE and not hmac.compare_digest(request.form.get("code", "").strip(), ACCESS_CODE):
+    if not code_ok():
         return jsonify({"error": "Wrong or missing team access code.", "need": "code"}), 403
     if request.form.get("consent") != "yes":
         return jsonify({"error": "Please confirm the consent checkbox first.", "need": "consent"}), 403

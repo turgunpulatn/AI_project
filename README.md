@@ -96,11 +96,12 @@ AI recordings captured through the mic went from 4/14 to 13/14 caught, but these
 On 11 new mic recordings the model had **never seen**, 7/7 humans were called human, but only 1 of 4 AI voices was caught (2/4 with the playback warning, before the playback fix below).
 **AI played into the mic remains the main open problem**, and more real phone→mic recordings are the next step.
 
-**What mattered most:**
-* Augmentation: CNN EER fell from 0.214 to 0.084.
-* Spectrogram CNN instead of hand-crafted features: EER fell from 0.183 to 0.074.
-* Self-supervised WavLM features plus the ensemble: EER fell from 0.073 to 0.051.
-* 7,500 extra uz/ru/en speakers with matching fakes: holdout EER fell from 7.3% to 3.5%.
+**What mattered most** (same CV folds, EER, lower is better):
+* Augmentation: our CNN went from 0.302 without augmentation to 0.126 with it (E6 → E8).
+* Spectrogram CNN instead of hand-crafted features: 0.249 → 0.112 (E5 → E10).
+* Self-supervised WavLM features plus the ensemble with our CNN: 0.103 → 0.077 (E11 → E12).
+* Phone-speaker and laptop-mic augmentation: hard-holdout EER 1.4% → 0.4%. Fixing the data of the playback detector
+  raised AI played from a phone into the mic from 44% to 86% flagged (see `results/mic_channel.md`).
 
 ### Playback detector ("is the voice coming from a speaker?")
 A second model (`train_playback.py`, results in `results/playback.md`). It was trained on 148 real replays recorded into this laptop's microphone,
@@ -112,21 +113,24 @@ In the app, a **microphone** recording that sounds played-back is shown as "Susp
 
 ## Data (what we collected / generated)
 
+Counts are the recordings used to train the current model (from `dataset/processed/manifest.csv`, Uzbek / English / Russian).
+
 | Class | Source | How | Files |
 |---|---|---|---|
-| Human | **Google FLEURS** (CC-BY-4.0), uz / ru / en used (14 downloaded) | `scripts/import_fleurs.py`: balanced by sentence, 2–25 s | 4532 |
+| Human | **Google FLEURS** (CC-BY-4.0), uz / ru / en | `scripts/import_fleurs.py`: balanced by sentence, 2–25 s | 8,560 |
 | Human | **LibriSpeech dev-clean** (CC-BY-4.0), 40 speakers | `scripts/import_librispeech.py` | 997 |
-| Human | **Team recordings** | app → *Collect data* tab | `me-*` |
-| AI | Microsoft Edge neural TTS, ~100 voices (uz / ru / en used) | `generate_ai.py --engine edge` | 3291 |
-| AI | Piper (VITS) offline neural TTS, 16 voices | `--engine piper` | 720 |
-| AI | Google TTS | `--engine gtts` | 540 |
+| Human | **Team microphone recordings** and real speaker replays of human voices | app → *Collect data*; `scripts/record_replay.py` | 83 |
+| AI | Microsoft Edge neural TTS, 51 voices | `generate_ai.py --engine edge` | 2,692 |
+| AI | Piper (VITS) offline neural TTS, 4 voices | `--engine piper` | 600 |
+| AI | Google TTS | `--engine gtts` | 500 |
 | AI | Windows SAPI | `--engine sapi` | 60 |
-| AI | **XTTS-v2 voice cloning** of real FLEURS/LibriSpeech speakers | `--engine xtts` | 555 |
-| AI | **Voice changers**: pitch shift, formant/gender shift, speed+pitch, robot | `scripts/make_fakes.py` (ffmpeg rubberband) | 1307 |
-| AI | Vocoder resynthesis (Griffin-Lim) | `scripts/make_fakes.py` | 375 |
+| AI | **XTTS-v2 voice cloning** of real FLEURS / LibriSpeech speakers | `--engine xtts` | 873 |
+| AI | **Voice changers**: pitch shift 1,034, formant/gender 853, speed+pitch 553, robot 359 | `scripts/make_fakes.py` (ffmpeg rubberband) | 2,799 |
+| AI | Vocoder resynthesis (Griffin-Lim) | `scripts/make_fakes.py` | 719 |
+| AI | **AI played from a phone or speaker into the laptop mic** (team recordings, scripted replays, "wrong answer" corrections) | app, `scripts/record_replay.py` | 34 |
+| | **Total** | | **9,640 human (24.6 h) / 8,277 AI (18.0 h)** |
 
-TTS text comes from FLEURS/LibriSpeech transcripts in the same language, so both classes say the same kind of sentences.
-Kyrgyz and Tajik have no native TTS voices, so Kazakh and Russian voices read them, which is what a scammer would do.
+TTS text comes from FLEURS / LibriSpeech transcripts in the same language, so both classes say the same kind of sentences.
 A fake made from a real recording keeps the source's group, so the original and its fake are always in the same fold.
 
 ## Reproduce
@@ -189,7 +193,13 @@ VoxCheck/
 
 ## Known limitations / future work
 
+* **AI played into the microphone from an unfamiliar phone or room is often missed by the main model.** On 4 new phone→mic AI clips
+  it caught only 1 (the playback detector flags most of them as "played from a device"). More real phone→mic recordings from many
+  phones and rooms, plus a decision threshold calibrated on microphone recordings, are the next steps (`results/mic_channel.md`).
+* The playback detector learned "live voice" mostly from one team member (62 recordings), so other people sometimes get a false
+  "played from a device" warning. Live recordings from classmates (`scripts/share.ps1`) fix this.
 * Unseen fake generators, such as ElevenLabs or new cloning models, may be harder. More engines in `dataset/ai` improve generalisation.
-* Speed+pitch voice changers and Piper/VITS voices are the weakest categories. A linear-frequency or LFCC front-end that keeps high-frequency detail is the next experiment to try.
+* Speed+pitch voice changers and Piper/VITS voices are the weakest categories. A linear-frequency or LFCC front-end that keeps
+  high-frequency detail is the next experiment to try.
 * FLEURS has no speaker IDs (only sentence IDs), so a FLEURS speaker can appear in both train and test folds. LibriSpeech is split by speaker.
-* Real phone calls (8 kHz) are simulated, not recorded. Recording real calls with the **Collect data** tab would help most.
+* Real phone calls (8 kHz) are simulated, not recorded.

@@ -163,6 +163,11 @@ def test_collect_needs_code_and_consent():
             log = open(os.path.join(td, "consent_log.csv"), encoding="utf-8").read()
             assert "tester" in log and r.get_json()["saved"].split("/")[-1] in log
             assert c.get("/health").get_json()["code_required"] is True
+            # when shared, analysing a voice also needs the code
+            r = c.post("/analyze", data={"audio": wav()}, content_type="multipart/form-data")
+            assert r.status_code in (403, 503) and (r.status_code == 503 or r.get_json()["need"] == "code")
+            assert c.post("/check_code", data={"code": "nope"}).status_code == 403
+            assert c.post("/check_code", data={"code": "K7Q2"}).status_code == 200
         finally:
             appmod.ACCESS_CODE, appmod.DATASET = old_code, old_dataset
 

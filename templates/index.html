@@ -189,6 +189,10 @@ h2.sec{margin:0 0 6px;font:400 22px/1.2 var(--serif)}
 .scroll{overflow-x:auto}
 .ebar{display:inline-block;height:6px;background:var(--ink2);vertical-align:middle;margin-left:6px}
 img.fig{width:100%;border-radius:4px;border:1.5px solid var(--line2);background:#fff;margin-top:8px}
+.gate{margin:14px 0 0;padding:16px;border:1.5px solid var(--ink);border-radius:6px;background:var(--panel);display:grid;gap:8px;max-width:520px}
+.gate b{font:400 20px/1.2 var(--serif)}
+.gaterow{display:flex;gap:8px}.gaterow input{flex:1;font:700 16px var(--mono);letter-spacing:2px;text-transform:uppercase}
+.locked #tab-check,.locked #tab-collect,.locked .tabs{display:none!important}
 .banner{margin:14px 0 0;padding:12px 14px;border:1.5px solid var(--ai);border-left-width:5px;border-radius:0;background:var(--ai-bg);font-size:14px}
 .contrib{border:1.5px dashed var(--line2);border-radius:4px;padding:12px 14px;margin:0 0 14px;display:grid;gap:10px;background:var(--panel2)}
 .codefield{display:grid;gap:4px;font:12px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);max-width:320px}
@@ -216,6 +220,13 @@ footer{margin-top:26px;padding-top:12px;border-top:1.5px solid var(--ink);font:1
 </header>
 
 <div class="banner hidden" id="banner" role="alert"></div>
+<div class="gate hidden" id="gate">
+  <b data-i18n="gate_title">Enter the team access code</b>
+  <span class="small" data-i18n="gate_sub">You got it together with this link.</span>
+  <form class="gaterow" id="gateForm"><input type="text" id="gateCode" autocomplete="off" maxlength="64" aria-label="Access code">
+    <button class="btn" type="submit" data-i18n="gate_btn">Continue</button></form>
+  <span class="status err" id="gateErr"></span>
+</div>
 
 <nav class="tabs">
   <button class="tab on" data-tab="check"><em>01</em><span data-i18n="tab_check">Check a voice</span></button>
@@ -566,21 +577,24 @@ const I18N = {
 };
 
 const I18N_EXTRA = {
- en: {c_code: "Team access code", c_consent: "I agree that my voice recordings are stored and used to train and test VoxCheck for our IUT course project. They are not published.",
+ en: {gate_title: "Enter the team access code", gate_sub: "You got it together with this link.", gate_btn: "Continue",
+      c_code: "Team access code", c_consent: "I agree that my voice recordings are stored and used to train and test VoxCheck for our IUT course project. They are not published.",
       err_code: "Wrong or missing team access code — ask the project owner.", err_consent: "Tick the consent box in the Collect data tab first.",
       err_decode: "This file couldn't be read as audio. Try wav, mp3, ogg, m4a or webm.",
       err_speech: "Not enough speech — record at least 2 seconds of voice.", err_empty: "The recording is empty — check that the right microphone is selected.",
       err_big: "File is too large (max 25 MB).", err_generic: "Something went wrong on the server. Try again.",
       srv_bad: "The server can't analyse audio right now: {e}. Restart it with: python app.py",
       srv_down: "The VoxCheck server isn't running. Start it with: python app.py"},
- uz: {c_code: "Jamoa kirish kodi", c_consent: "Ovoz yozuvlarim IUT kurs loyihamiz doirasida VoxCheck'ni o'qitish va sinash uchun saqlanishi va ishlatilishiga roziman. Ular ommaga e'lon qilinmaydi.",
+ uz: {gate_title: "Jamoa kirish kodini kiriting", gate_sub: "Kod sizga havola bilan birga yuborilgan.", gate_btn: "Davom etish",
+      c_code: "Jamoa kirish kodi", c_consent: "Ovoz yozuvlarim IUT kurs loyihamiz doirasida VoxCheck'ni o'qitish va sinash uchun saqlanishi va ishlatilishiga roziman. Ular ommaga e'lon qilinmaydi.",
       err_code: "Jamoa kirish kodi noto'g'ri yoki kiritilmagan — loyiha egasidan so'rang.", err_consent: "Avval “Ma'lumot yig'ish” bo'limida rozilik belgisini qo'ying.",
       err_decode: "Bu faylni audio sifatida o'qib bo'lmadi. wav, mp3, ogg, m4a yoki webm bilan urinib ko'ring.",
       err_speech: "Nutq yetarli emas — kamida 2 soniya gapiring.", err_empty: "Yozuv bo'sh — to'g'ri mikrofon tanlanganini tekshiring.",
       err_big: "Fayl juda katta (maks. 25 MB).", err_generic: "Serverda xatolik yuz berdi. Qayta urinib ko'ring.",
       srv_bad: "Server hozir audioni tahlil qila olmayapti: {e}. Qayta ishga tushiring: python app.py",
       srv_down: "VoxCheck serveri ishlamayapti. Ishga tushiring: python app.py"},
- ru: {c_code: "Код доступа команды", c_consent: "Я согласен(на), что мои записи голоса хранятся и используются для обучения и проверки VoxCheck в учебном проекте IUT. Они не публикуются.",
+ ru: {gate_title: "Введите код доступа команды", gate_sub: "Код прислали вместе с этой ссылкой.", gate_btn: "Продолжить",
+      c_code: "Код доступа команды", c_consent: "Я согласен(на), что мои записи голоса хранятся и используются для обучения и проверки VoxCheck в учебном проекте IUT. Они не публикуются.",
       err_code: "Неверный или пустой код доступа — спросите у владельца проекта.", err_consent: "Сначала отметьте согласие во вкладке «Сбор данных».",
       err_decode: "Не удалось прочитать файл как аудио. Попробуйте wav, mp3, ogg, m4a или webm.",
       err_speech: "Недостаточно речи — запишите хотя бы 2 секунды голоса.", err_empty: "Запись пустая — проверьте, выбран ли нужный микрофон.",
@@ -849,13 +863,14 @@ $("analyze").onclick = async () => {
   busy = true; $("analyze").disabled = true;
   $("analyze").innerHTML = `<span class="spinner"></span>${t("analyzing")}`;
   setLamp("lampOut", "lamp_busy"); setStatus(null);
-  const fd = new FormData(); fd.append("audio", current, current.name);
+  const fd = new FormData(); fd.append("audio", current, current.name); fd.append("code", $("accessCode").value.trim());
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 60000);
     const r = await fetch("/analyze", {method: "POST", body: fd, signal: ctrl.signal});
     clearTimeout(to);
     let d; try { d = await r.json(); } catch { throw Object.assign(new Error("Could not process"), {server: true}); }
-    if (!r.ok) throw Object.assign(new Error(d.error || "Server error"), {server: true});
+    if (r.status === 403 && d.need === "code") { codeVerified = false; lock(true); }
+    if (!r.ok) throw Object.assign(new Error(d.need ? t("err_" + d.need) : (d.error || "Server error")), {server: true});
     showResult(d);
   } catch (e) {
     View.lampOut = View.result ? "lamp_done" : "lamp_idle";
@@ -1040,6 +1055,29 @@ document.addEventListener("keydown", e => {
 });
 window.addEventListener("beforeunload", () => Rec.stop());
 
+
+/* ================================================= access code gate (only when the app is shared) */
+let codeVerified = false;
+async function tryCode(code) {
+  const fd = new FormData(); fd.append("code", code);
+  try { const r = await fetch("/check_code", {method: "POST", body: fd}); return r.ok; } catch (e) { return false; }
+}
+function lock(on) { document.body.classList.toggle("locked", on); $("gate").classList.toggle("hidden", !on); }
+async function verifyStoredCode() {
+  const c = $("accessCode").value.trim();
+  if (c && await tryCode(c)) { codeVerified = true; lock(false); } else { lock(true); $("gateCode").focus(); }
+}
+$("gateForm").onsubmit = async e => {
+  e.preventDefault();
+  const c = $("gateCode").value.trim();
+  if (!c) { $("gateErr").textContent = t("err_code"); return; }
+  if (await tryCode(c)) {
+    codeVerified = true; $("accessCode").value = c;
+    try { localStorage.setItem("vox_code", c); } catch (e2) {}
+    $("gateErr").textContent = ""; lock(false);
+  } else $("gateErr").textContent = t("err_code");
+};
+
 /* ================================================= server health (shown as a banner, re-checked every 15 s) */
 let health = {ok: true};
 function paintBanner() {
@@ -1052,6 +1090,7 @@ async function checkHealth() {
     const r = await fetch("/health", {cache: "no-store"});
     health = await r.json(); health.down = false;
     $("codeRow").classList.toggle("hidden", !health.code_required);
+    if (health.code_required && !codeVerified) verifyStoredCode();
   } catch (e) { health = {ok: false, down: true}; }
   paintBanner();
 }
