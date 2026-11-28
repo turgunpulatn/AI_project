@@ -22,7 +22,7 @@ It runs on CPU, so no GPU is needed for the demo.
 **ffmpeg** is not in the repo (too large). Install it once with `winget install Gyan.FFmpeg`, or put `ffmpeg.exe` (and `ffplay.exe`) into `tools/ffmpeg/`.
 Without ffmpeg the app still works for microphone recordings and wav / mp3 / ogg / flac uploads, but not for webm / m4a.
 
-**Not in the repo:** `dataset/` (about 18k audio files plus processed features; it also holds team voice recordings, which are personal data).
+**Not in the repo:** `dataset/` (about 18.7k audio files plus processed features; it also holds team voice recordings, which are personal data).
 The trained models in `models/` are included, so the demo runs right after cloning. To retrain, get `dataset/` from the team's shared drive.
 
 Tests: `python tests/test_voxcheck.py` checks decoding, silence and short-clip rejection, augmentation, file-name metadata and all web endpoints.
@@ -57,29 +57,43 @@ microphone with label *ai*, in Uzbek, English and Russian. Use one speaker name 
 
 **Languages: Uzbek, English, Russian only.** Other languages are skipped in `prepare_data.py`.
 
-Dataset used for training: **17,917 recordings** (9,640 human, 8,277 AI) in uz / en / ru, plus team microphone recordings.
+Dataset used for training: **18,711 recordings** (9,647 human, 9,064 AI) in uz / en / ru, plus team microphone recordings.
 Evaluation uses 5-fold cross-validation **grouped by speaker / TTS voice / sentence**, with metrics per recording.
-Test folds include the new phone-speaker and laptop-mic copies, which makes the test **harder** than in the earlier 14-language run,
-so the CV numbers below are not directly comparable to that run (its table is kept in `results/experiments_14lang.md`).
+Test folds include the phone-speaker and laptop-mic copies, so the test is **harder** than in the earlier 14-language run
+(its table is kept in `results/experiments_14lang.md`). Full table with params and speed: `results/experiments.md`.
 
 | # | Approach | Accuracy | ROC-AUC | EER ↓ |
 |---|---|---|---|---|
-| E1 | Majority baseline | 0.539 | 0.500 | 0.500 |
-| E2 | Logistic regression (99 acoustic features) | 0.623 | 0.668 | 0.395 |
-| E3 | Random forest (first prototype) | 0.623 | 0.731 | 0.357 |
-| E4 | SVM (RBF) | 0.621 | 0.694 | 0.377 |
-| E5 | Random forest + augmentation | 0.750 | 0.845 | 0.249 |
-| E6 | VoxCNN (own), no augmentation | 0.684 | 0.785 | 0.302 |
-| E7 | VoxCNN small + augmentation | 0.847 | 0.925 | 0.156 |
-| E8 | VoxCNN + augmentation | 0.877 | 0.947 | 0.126 |
-| E10 | VoxCNN-wide + augmentation (own, from scratch) | 0.894 | 0.959 | 0.112 |
-| E11 | WavLM-Base+ features (pretrained, frozen) + own MLP | 0.903 | 0.963 | 0.103 |
-| E9 | Ensemble RF + VoxCNN-wide | 0.891 | 0.960 | 0.107 |
-| **E12** | **Ensemble VoxCNN-wide + WavLM classifier (selected)** | **0.921** | **0.977** | **0.077** |
+| E1 | Majority baseline | 0.516 | 0.500 | 0.500 |
+| E2 | Logistic regression (99 acoustic features) | 0.634 | 0.678 | 0.391 |
+| E3 | Random forest (first prototype) | 0.637 | 0.737 | 0.352 |
+| E4 | SVM (RBF) | 0.634 | 0.706 | 0.364 |
+| E5 | Random forest + augmentation | 0.752 | 0.850 | 0.246 |
+| E6 | VoxCNN (own), no augmentation | 0.686 | 0.787 | 0.305 |
+| E7 | VoxCNN small + augmentation | 0.853 | 0.931 | 0.148 |
+| E8 | VoxCNN + augmentation | 0.881 | 0.950 | 0.122 |
+| E10 | VoxCNN-wide + augmentation (own, from scratch, log-mel) | 0.902 | 0.963 | 0.100 |
+| E11 | WavLM-Base+ features (pretrained, frozen) + own MLP | 0.907 | 0.966 | 0.096 |
+| E13 | VoxCNN-wide on a **linear-frequency** spectrogram (LFCC-style front-end) | 0.890 | 0.958 | 0.112 |
+| E9 | Ensemble RF + VoxCNN-wide | 0.899 | 0.963 | 0.098 |
+| **E12** | **Ensemble VoxCNN-wide + WavLM classifier (selected)** | **0.927** | **0.980** | **0.071** |
+| E14 | Ensemble VoxCNN-wide + linear-spectrogram CNN + WavLM classifier | 0.927 | 0.981 | 0.068 |
 
-**Why E12:** it has the lowest EER (0.077). Our own CNN and the WavLM classifier make different mistakes, so averaging them
-cuts the error by about 25% compared with either one alone. The trade-off is the reused, frozen WavLM extractor (94M parameters).
-Analysis takes ~0.1–0.3 s per recording.
+**Why E12:** our own CNN and the WavLM classifier make different mistakes, so averaging them cuts the error by about 25%
+compared with either one alone. E14 adds the linear-spectrogram CNN and is only 0.002 better on uz/en/ru (0.064 vs 0.066),
+which is within our "equal" margin of 0.005, so the smaller and faster E12 wins. The linear front-end on its own (E13) was worse
+than log-mel (E10), so the high-frequency detail it keeps did not pay off on this data.
+The trade-off of E12 is the reused, frozen WavLM extractor (94M parameters). Analysis takes ~0.1–0.3 s per recording.
+
+**Data version matters more than the model.** Before this run, Russian and Uzbek AI speech came from only 2 native Edge voices each.
+We added 26 more voice identities (multilingual Edge voices reading ru / uz text, Turkish / Azerbaijani / Kazakh voices reading
+Uzbek, and 8 more English Piper voices: +773 AI files). Same model (E12), same CV protocol:
+
+| | before (17,917 files) | **after (18,711 files)** |
+|---|---|---|
+| CV EER, E12 | 0.077 | **0.071** |
+| Unseen voices, clean EER | 2.6% | **1.5%** |
+| Unseen voices, phone→mic EER | 17.9% | **13.8%** |
 
 **Holdout** (`scripts/holdout_eval.py`): 336 clips never seen in training by either model, scored on the same clips.
 The clips are new, but the 8 Microsoft TTS voices also appear in training, and the "speaker replay" copies use the same
@@ -92,21 +106,25 @@ new people from the FLEURS **test** split (training used train + dev), **Meta MM
 
 | | clean | phone→mic copy |
 |---|---|---|
-| New human speakers called human (uz / ru / en, 40 each) | **100%** | 95.0% |
-| MMS-TTS caught (uz 100%, ru 100%, en 90%) | **96.7%** | 61.1% |
-| New Piper voices caught (ru 66.7%, en 82.1%) | **74.1%** | 58.6% |
-| EER | **2.6%** | 17.9% |
+| New human speakers called human (uz / ru / en, 40 each) | **100%** | 98.3% |
+| MMS-TTS caught (uz / ru / en 100%) | **100%** | 68.9% |
+| New Piper voices caught (ru 60.0%, en 96.4%) | **77.6%** | 70.7% |
+| EER | **1.5%** | 13.8% |
 
-So the model generalises to a new engine on clean audio, but new voices played through a phone are often missed.
+So the model generalises to a new engine on clean audio, but about 30% of new voices played through a phone are still missed,
+and the two unseen Russian Piper voices are the weakest case.
 More real phone→mic recordings of **many different** TTS voices are the most useful data to add.
 They are unseen FLEURS speakers in uz / ru / en, TTS, voice changers, and simulated speaker replay of everything.
 
-| | before the mic fix | **after the mic fix (current)** |
-|---|---|---|
-| Accuracy | 98.2% | **99.4%** |
-| EER, all | 1.4% | **0.4%** |
-| EER, simulated speaker replay | 2.4% | **0.4%** |
-| uz / ru / en accuracy | 100 / 100 / 98.9% | 100 / 100 / 98.9% |
+| | before the mic fix | after the mic fix | **current (more voices)** |
+|---|---|---|---|
+| Accuracy | 98.2% | 99.4% | **99.4%** |
+| EER, all | 1.4% | 0.4% | **1.0%** |
+| EER, simulated speaker replay | 2.4% | 0.4% | **0.4%** |
+| uz / ru / en accuracy | 100 / 100 / 98.9% | 100 / 100 / 98.9% | **100 / 100 / 98.9%** |
+
+On this easy holdout both models get 2 of 336 clips wrong; the small EER change is a ranking difference
+on 336 clips and is within noise. The unseen-voice test above is the more informative one.
 
 **Real microphone (AI played from a phone into the laptop):** see `results/mic_channel.md`. Clean files are still caught 18/18.
 AI recordings captured through the mic went from 4/14 to 13/14 caught, but these recordings were used in training.
@@ -114,9 +132,10 @@ On 11 new mic recordings the model had **never seen**, 7/7 humans were called hu
 **AI played into the mic remains the main open problem**, and more real phone→mic recordings are the next step.
 
 **What mattered most** (same CV folds, EER, lower is better):
-* Augmentation: our CNN went from 0.302 without augmentation to 0.126 with it (E6 → E8).
-* Spectrogram CNN instead of hand-crafted features: 0.249 → 0.112 (E5 → E10).
-* Self-supervised WavLM features plus the ensemble with our CNN: 0.103 → 0.077 (E11 → E12).
+* Augmentation: our CNN went from 0.305 without augmentation to 0.122 with it (E6 → E8).
+* Spectrogram CNN instead of hand-crafted features: 0.246 → 0.100 (E5 → E10).
+* Self-supervised WavLM features plus the ensemble with our CNN: 0.096 → 0.071 (E11 → E12).
+* More TTS voice identities for ru / uz: unseen-voice EER 2.6% → 1.5% clean, 17.9% → 13.8% phone→mic.
 * Phone-speaker and laptop-mic augmentation: hard-holdout EER 1.4% → 0.4%. Fixing the data of the playback detector
   raised AI played from a phone into the mic from 44% to 86% flagged (see `results/mic_channel.md`).
 
@@ -150,17 +169,17 @@ Counts are the recordings used to train the current model (from `dataset/process
 | Class | Source | How | Files |
 |---|---|---|---|
 | Human | **Google FLEURS** (CC-BY-4.0), uz / ru / en | `scripts/import_fleurs.py`: balanced by sentence, 2–25 s | 8,560 |
-| Human | **LibriSpeech dev-clean** (CC-BY-4.0), 40 speakers | `scripts/import_librispeech.py` | 997 |
-| Human | **Team microphone recordings** and real speaker replays of human voices | app → *Collect data*; `scripts/record_replay.py` | 83 |
-| AI | Microsoft Edge neural TTS, 51 voices | `generate_ai.py --engine edge` | 2,692 |
-| AI | Piper (VITS) offline neural TTS, 4 voices | `--engine piper` | 600 |
+| Human | **LibriSpeech dev-clean** (CC-BY-4.0), 40 speakers | `scripts/import_librispeech.py` | 1,002 |
+| Human | **Team microphone recordings** and real speaker replays of human voices | app → *Collect data*; `scripts/record_replay.py` | 74 |
+| AI | Microsoft Edge neural TTS, 62 voices (incl. multilingual and tr / az / kk voices reading ru / uz) | `generate_ai.py --engine edge`, `--engine edge-extra` | 3,225 |
+| AI | Piper (VITS) offline neural TTS, 12 voices (6 more are kept out for the unseen test) | `--engine piper` | 840 |
 | AI | Google TTS | `--engine gtts` | 500 |
 | AI | Windows SAPI | `--engine sapi` | 60 |
 | AI | **XTTS-v2 voice cloning** of real FLEURS / LibriSpeech speakers | `--engine xtts` | 873 |
 | AI | **Voice changers**: pitch shift 1,034, formant/gender 853, speed+pitch 553, robot 359 | `scripts/make_fakes.py` (ffmpeg rubberband) | 2,799 |
 | AI | Vocoder resynthesis (Griffin-Lim) | `scripts/make_fakes.py` | 719 |
 | AI | **AI played from a phone or speaker into the laptop mic** (team recordings, scripted replays, "wrong answer" corrections) | app, `scripts/record_replay.py` | 34 |
-| | **Total** | | **9,640 human (24.6 h) / 8,277 AI (18.0 h)** |
+| | **Total** | | **9,647 human (24.6 h after cleaning) / 9,064 AI (19.7 h)** |
 
 TTS text comes from FLEURS / LibriSpeech transcripts in the same language, so both classes say the same kind of sentences.
 A fake made from a real recording keeps the source's group, so the original and its fake are always in the same fold.
@@ -232,7 +251,7 @@ VoxCheck/
 * The playback detector learned "live voice" mostly from one team member (62 recordings), so other people sometimes get a false
   "played from a device" warning. Live recordings from classmates (`scripts/share.ps1`) fix this.
 * Unseen fake generators, such as ElevenLabs or new cloning models, may be harder. More engines in `dataset/ai` improve generalisation.
-* Speed+pitch voice changers and Piper/VITS voices are the weakest categories. A linear-frequency or LFCC front-end that keeps
-  high-frequency detail is the next experiment to try.
+* Speed+pitch voice changers and Piper/VITS voices are the weakest categories. A linear-frequency (LFCC-style) front-end
+  was tried (E13) and did not beat log-mel. Fine-tuning WavLM end-to-end (instead of keeping it frozen) is the next model experiment.
 * FLEURS has no speaker IDs (only sentence IDs), so a FLEURS speaker can appear in both train and test folds. LibriSpeech is split by speaker.
 * Real phone calls (8 kHz) are simulated, not recorded.

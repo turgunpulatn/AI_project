@@ -126,6 +126,25 @@ def logmel(w):
     return ((m - m.mean()) / (m.std() + 1e-6)).astype(np.float32)
 
 
+_LIN_FB = None
+
+
+def linspec(w):
+    """Log LINEAR-frequency filterbank (the front-end of LFCC, used in anti-spoofing): 64 equal-width
+    triangular bands 0-8 kHz. Mel bands get wide above ~2 kHz and blur the high frequencies, where
+    vocoder / TTS artefacts live; linear bands keep them. Same shape as logmel -> same VoxCNN."""
+    global _LIN_FB
+    if _LIN_FB is None:
+        n_bins = N_FFT // 2 + 1
+        edges = np.linspace(0, n_bins - 1, N_MELS + 2)
+        k = np.arange(n_bins)[None, :]
+        lo, mid, hi = edges[:-2, None], edges[1:-1, None], edges[2:, None]
+        _LIN_FB = np.maximum(0, np.minimum((k - lo) / (mid - lo), (hi - k) / (hi - mid))).astype(np.float32)
+    S = np.abs(librosa.stft(w, n_fft=N_FFT, hop_length=HOP_LEN)) ** 2
+    m = librosa.power_to_db(_LIN_FB @ S, ref=1.0, top_db=80.0)
+    return ((m - m.mean()) / (m.std() + 1e-6)).astype(np.float32)
+
+
 def handcrafted(w):
     """99 summary features for classical models (MFCC, deltas, spectral shape)."""
     S = np.abs(librosa.stft(w, n_fft=N_FFT, hop_length=HOP_LEN))

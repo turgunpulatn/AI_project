@@ -30,6 +30,7 @@ def test_shapes():
     w = A.prepare(_tone(5))
     assert w.shape[1] == int(A.WIN_S * A.SR) and len(w) == 4
     assert A.logmel(w[0]).shape == (A.N_MELS, 201)
+    assert A.linspec(w[0]).shape == (A.N_MELS, 201)
     assert A.handcrafted(w[0]).shape == (99,)
 
 

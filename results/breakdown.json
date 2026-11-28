@@ -3,50 +3,50 @@
   {
    "key": "human",
    "name": "Real human",
-   "n": 29220,
-   "acc": 0.95927446954141
+   "n": 29269,
+   "acc": 0.9566093819399365
   },
   {
    "key": "edge",
    "name": "Neural TTS (Microsoft)",
-   "n": 8076,
-   "acc": 0.9032937097573056
+   "n": 9675,
+   "acc": 0.9517312661498708
   },
   {
    "key": "feedback",
    "name": "User-reported mistakes",
-   "n": 77,
-   "acc": 0.3246753246753247
+   "n": 147,
+   "acc": 0.36054421768707484
   },
   {
    "key": "gtts",
    "name": "Neural TTS (Google)",
    "n": 1500,
-   "acc": 0.8073333333333333
+   "acc": 0.8226666666666667
   },
   {
    "key": "other",
    "name": "Other AI",
-   "n": 27,
-   "acc": 0.4444444444444444
+   "n": 34,
+   "acc": 0.7941176470588235
   },
   {
    "key": "piper",
    "name": "Neural TTS (Piper / VITS)",
-   "n": 1800,
-   "acc": 0.8233333333333334
+   "n": 2520,
+   "acc": 0.8555555555555555
   },
   {
    "key": "replay",
    "name": "AI played through a real speaker",
    "n": 126,
-   "acc": 0.2777777777777778
+   "acc": 0.30158730158730157
   },
   {
    "key": "sapi",
    "name": "Classic TTS (Windows SAPI)",
    "n": 180,
-   "acc": 0.7611111111111111
+   "acc": 0.9
   },
   {
    "key": "vcclassic",
@@ -58,57 +58,57 @@
    "key": "vcgender",
    "name": "Voice changer: formant / gender",
    "n": 2579,
-   "acc": 0.8929817758821249
+   "acc": 0.8836758433501357
   },
   {
    "key": "vcpitch",
    "name": "Voice changer: pitch shift",
    "n": 3118,
-   "acc": 0.9576651699807569
+   "acc": 0.9589480436177037
   },
   {
    "key": "vcrobot",
    "name": "Voice changer: robot",
    "n": 1089,
-   "acc": 0.9889807162534435
+   "acc": 0.9871441689623508
   },
   {
    "key": "vocoder",
    "name": "Vocoder resynthesis",
    "n": 2173,
-   "acc": 0.9217671421997239
+   "acc": 0.9199263690750115
   },
   {
    "key": "xtts",
    "name": "Voice cloning (XTTS-v2)",
    "n": 2619,
-   "acc": 0.8350515463917526
+   "acc": 0.8228331424207713
   }
  ],
  "lang": [
   {
    "key": "en",
-   "n": 22305,
-   "human_acc": 0.942294402211472,
-   "ai_acc": 0.91080249790288
+   "n": 23025,
+   "human_acc": 0.935124395300622,
+   "ai_acc": 0.9144030046292253
   },
   {
    "key": "ru",
-   "n": 16507,
-   "human_acc": 0.9771747991149412,
-   "ai_acc": 0.8056818181818182
+   "n": 17356,
+   "human_acc": 0.9765925235821591,
+   "ai_acc": 0.8527768274603718
   },
   {
    "key": "team",
-   "n": 704,
-   "human_acc": 0.5217391304347826,
-   "ai_acc": 0.651685393258427
+   "n": 830,
+   "human_acc": 0.5411522633744856,
+   "ai_acc": 0.6395348837209303
   },
   {
    "key": "uz",
-   "n": 14743,
-   "human_acc": 0.9864269141531322,
-   "ai_acc": 0.9193205944798302
+   "n": 15493,
+   "human_acc": 0.9889791183294664,
+   "ai_acc": 0.932925942092245
   }
  ]
 }

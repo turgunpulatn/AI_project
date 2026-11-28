@@ -23,6 +23,11 @@ DATA_STEPS = [
     [PY, "scripts/generate_ai.py", "--engine", "edge", "--per-lang", "150"],
     [PY, "scripts/generate_ai.py", "--engine", "gtts", "--per-lang", "60", "--langs", "uz", "ru", "en"],
     [PY, "scripts/generate_ai.py", "--engine", "piper", "--per-voice", "45"],
+    # more voice identities (ru / uz had only 2 native voices each); the unseen-voice test voices stay out
+    [PY, "scripts/generate_ai.py", "--engine", "edge-extra", "--per-voice", "25", "--langs", "ru", "uz"],
+    [PY, "scripts/generate_ai.py", "--engine", "piper", "--per-voice", "30", "--langs", "en", "--voices",
+     "en_GB-cori-medium", "en_GB-jenny_dioco-medium", "en_GB-northern_english_male-medium", "en_US-joe-medium",
+     "en_US-john-medium", "en_US-norman-medium", "en_US-hfc_female-medium", "en_US-sam-medium"],
     [PY, "scripts/generate_ai.py", "--engine", "xtts", "--per-lang", "40"],
     # AI: voice changers / vocoder made from real voices
     [PY, "scripts/make_fakes.py", "--fraction", "0.3"],

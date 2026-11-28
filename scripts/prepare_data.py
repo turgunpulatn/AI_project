@@ -3,8 +3,8 @@
 dataset/human/*, dataset/ai/*   (any audio format)
    -> decode 16 kHz mono -> remove silence -> loudness normalise
    -> K augmented copies per file (replay through speaker / room / phone / codec / noise)   [aug_id > 0]
-   -> 2 s windows -> log-mel (for CNN) + hand-crafted features (for classical ML)
-   -> dataset/processed/mel.npy (float16, written incrementally - never all in RAM)
+   -> 2 s windows -> log-mel and log linear-frequency spectrograms (for CNN) + hand-crafted features (classical ML)
+   -> dataset/processed/mel.npy, lin.npy (float16, written incrementally - never all in RAM)
       dataset/processed/dataset.npz (labels, groups, language, attack type, hand-crafted features)
       dataset/processed/manifest.csv, results/data_report.md
 
@@ -34,7 +34,7 @@ PROC = os.path.join(ROOT, "dataset", "processed")
 def process(job):
     path, label, file_id, n_aug, max_win = job
     rng = np.random.default_rng(file_id)
-    out = {"mel": [], "hc": [], "wav": [], "aug": [], "info": None, "err": None}
+    out = {"mel": [], "lin": [], "hc": [], "wav": [], "aug": [], "info": None, "err": None}
     try:
         raw = A.load_audio(path)
         y = A.clean(raw)
@@ -53,6 +53,7 @@ def process(job):
                 ws = ws[np.linspace(0, len(ws) - 1, max_win).round().astype(int)]
             for w in ws:
                 out["mel"].append(A.logmel(w).astype(np.float16))
+                out["lin"].append(A.linspec(w).astype(np.float16))
                 out["hc"].append(A.handcrafted(w))
                 out["wav"].append(w.astype(np.float16))
                 out["aug"].append(aug_id)
@@ -111,7 +112,7 @@ def main():
     print(f"{len(jobs)} files, {a.aug} augmented copies each, <= {a.max_windows} windows/version, {a.workers} workers")
 
     os.makedirs(PROC, exist_ok=True)
-    raw_path = os.path.join(PROC, "mel.raw")
+    raw_path, lin_raw_path = os.path.join(PROC, "mel.raw"), os.path.join(PROC, "lin.raw")
     use_wavlm = not a.no_wavlm
     if use_wavlm:
         try:
@@ -137,7 +138,7 @@ def main():
         for s in range(0, len(items), block):
             yield from ex.map(fn, items[s:s + block], chunksize=4)
 
-    with open(raw_path, "wb") as fraw, ProcessPoolExecutor(a.workers) as ex:
+    with open(raw_path, "wb") as fraw, open(lin_raw_path, "wb") as flin, ProcessPoolExecutor(a.workers) as ex:
         for i, (path, label, file_id, out) in enumerate(bounded_map(ex, process, jobs), 1):
             g, lang, att = metas[file_id]
             info = out["info"] or {}
@@ -148,6 +149,7 @@ def main():
             n = len(out["mel"])
             if n:
                 fraw.write(np.stack(out["mel"]).astype(np.float16).tobytes())
+                flin.write(np.stack(out["lin"]).astype(np.float16).tobytes())
                 if use_wavlm:
                     wav_buf += out["wav"]
                     flush()
@@ -169,13 +171,14 @@ def main():
         os.remove(emb_path)
     elif os.path.exists(os.path.join(PROC, "wavlm.npy")):
         os.remove(os.path.join(PROC, "wavlm.npy"))
-    src = np.memmap(raw_path, dtype=np.float16, mode="r", shape=(N, *n_frames))
-    dst = np.lib.format.open_memmap(os.path.join(PROC, "mel.npy"), mode="w+", dtype=np.float16, shape=(N, *n_frames))
-    for s in range(0, N, 5000):
-        dst[s:s + 5000] = src[s:s + 5000]
-    dst.flush()
-    del src, dst
-    os.remove(raw_path)
+    for rp, name in ((raw_path, "mel.npy"), (lin_raw_path, "lin.npy")):
+        src = np.memmap(rp, dtype=np.float16, mode="r", shape=(N, *n_frames))
+        dst = np.lib.format.open_memmap(os.path.join(PROC, name), mode="w+", dtype=np.float16, shape=(N, *n_frames))
+        for s in range(0, N, 5000):
+            dst[s:s + 5000] = src[s:s + 5000]
+        dst.flush()
+        del src, dst
+        os.remove(rp)
     np.savez_compressed(os.path.join(PROC, "dataset.npz"),
                         hc=np.stack(hc), y=np.array(y, np.int64), group=np.array(groups), lang=np.array(langs),
                         attack=np.array(attacks), file_id=np.array(files), aug=np.array(augs))

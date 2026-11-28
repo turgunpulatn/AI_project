@@ -6,10 +6,10 @@ Model: Ensemble E10 + E11
 
 | Source | uz | ru | en | all | all, mic copy |
 |---|---|---|---|---|---|
-| Human (FLEURS test speakers), correct | 100.0% (40) | 100.0% (40) | 100.0% (40) | 100.0% (120) | 95.0% (120) |
-| MMS-TTS (new engine), caught | 100.0% (30) | 100.0% (30) | 90.0% (30) | 96.7% (90) | 61.1% (90) |
-| Piper, new voices, caught | – | 66.7% (30) | 82.1% (28) | 74.1% (58) | 58.6% (58) |
+| Human (FLEURS test speakers), correct | 100.0% (40) | 100.0% (40) | 100.0% (40) | 100.0% (120) | 98.3% (120) |
+| MMS-TTS (new engine), caught | 100.0% (30) | 100.0% (30) | 100.0% (30) | 100.0% (90) | 68.9% (90) |
+| Piper, new voices, caught | – | 60.0% (30) | 96.4% (28) | 77.6% (58) | 70.7% (58) |
 
-EER (clean): **0.026**
+EER (clean): **0.015**
 
-EER (mic copies): **0.179**
+EER (mic copies): **0.138**

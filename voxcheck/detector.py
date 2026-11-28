@@ -2,7 +2,7 @@
 
 models/model_meta.json -> "file" is one file or a comma-separated list (ensemble).
   *_wavlm.pt -> frozen WavLM-Base+ features + our MLP
-  *.pt       -> VoxCNN on log-mel spectrograms
+  *.pt       -> VoxCNN on a log-mel or linear-frequency spectrogram ("feat" in the checkpoint)
   *.joblib   -> scikit-learn model on hand-crafted features
 Window probabilities are averaged over models, then aggregated per recording with the rule chosen
 in training ("mean" or "top" = mean of the most AI-like half of the windows).
@@ -47,15 +47,15 @@ class Detector:
                     net = VoxMLP(ck["dim"])
                     net.load_state_dict(ck["state_dict"])
                     ssl.load()                  # WavLM (GPU if available)
-                    self.members.append(("mlp", net.eval()))
+                    self.members.append(("mlp", net.eval(), "wavlm"))
                 else:
                     from .model import VoxCNN
                     net = VoxCNN(channels=tuple(ck["channels"]))
                     net.load_state_dict(ck["state_dict"])
-                    self.members.append(("cnn", net.eval()))
+                    self.members.append(("cnn", net.eval(), ck.get("feat", "mel")))   # mel or lin spectrogram
             else:
                 import joblib
-                self.members.append(("sk", joblib.load(path)))
+                self.members.append(("sk", joblib.load(path), "hc"))
         # warm-up: librosa/numba/torch compile on first call (~7 s) -> do it at startup, not during the demo
         self.playback = self._load_playback()
         rng = np.random.default_rng(0)
@@ -81,26 +81,27 @@ class Detector:
             from .model import VoxCNN
             net = VoxCNN(channels=tuple(ck["channels"]))
         net.load_state_dict(ck["state_dict"])
-        return ck["kind"], net.eval()
+        return ck["kind"], net.eval(), ck.get("feat", "wavlm" if ck["kind"] == "mlp" else "mel")
 
     @staticmethod
-    def _feat(kind, wins, f):
+    def _feat(feat, wins, f):
         """features computed once per request and shared by all models"""
         import torch
-        if kind not in f:
-            if kind == "cnn":
-                f[kind] = torch.from_numpy(np.stack([A.logmel(w) for w in wins])).unsqueeze(1)
-            elif kind == "mlp":
+        if feat not in f:
+            if feat in ("mel", "lin"):
+                fn = A.logmel if feat == "mel" else A.linspec
+                f[feat] = torch.from_numpy(np.stack([fn(w) for w in wins])).unsqueeze(1)
+            elif feat == "wavlm":
                 from . import ssl
-                f[kind] = torch.from_numpy(ssl.embed(wins).astype(np.float32))
+                f[feat] = torch.from_numpy(ssl.embed(wins).astype(np.float32))
             else:
-                f[kind] = np.stack([A.handcrafted(w) for w in wins])
-        return f[kind]
+                f[feat] = np.stack([A.handcrafted(w) for w in wins])
+        return f[feat]
 
     def _score(self, wins, f):
         scores = []
-        for kind, m in self.members:
-            x = self._feat(kind, wins, f)
+        for kind, m, feat in self.members:
+            x = self._feat(feat, wins, f)
             if kind in ("cnn", "mlp"):
                 import torch
                 with torch.inference_mode():
@@ -113,9 +114,9 @@ class Detector:
         if self.playback is None:
             return None
         import torch
-        kind, m = self.playback
+        kind, m, feat = self.playback
         with torch.inference_mode():
-            return torch.sigmoid(m(self._feat(kind, wins, f))).numpy()
+            return torch.sigmoid(m(self._feat(feat, wins, f))).numpy()
 
     def analyze(self, path):
         t0 = time.perf_counter()

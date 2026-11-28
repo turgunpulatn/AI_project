@@ -92,14 +92,31 @@ torch.backends.cudnn.benchmark = DEV == "cuda"
 
 
 def to_source(mel):
-    """Put the whole float16 spectrogram array on the GPU once if it fits (fast batch sampling);
-    otherwise keep it as a CPU tensor."""
-    t = torch.from_numpy(np.ascontiguousarray(mel))
+    """Put the whole float16 feature array on the GPU once if it fits (fast batch sampling);
+    otherwise load it into RAM as a CPU tensor (never sample batches from a memory-mapped file:
+    random reads from disk made one fold take 8 hours)."""
     if DEV == "cuda":
         free, _ = torch.cuda.mem_get_info()
-        if t.numel() * 2 < free * 0.6:
-            return t.to(DEV)
-    return t
+        if mel.size * 2 < free * 0.6:
+            return torch.from_numpy(np.ascontiguousarray(mel)).to(DEV)
+    return torch.from_numpy(np.array(mel))
+
+
+class Specs:
+    """Spectrogram sources by name ("mel" / "lin"). Only ONE is kept on the GPU at a time: both together
+    (2 x 2.8 GB) do not fit next to the WavLM features on an 8 GB card."""
+
+    def __init__(self, arrays):
+        self.arrays, self.name, self.t = arrays, None, None
+
+    def get(self, name):
+        if name != self.name:
+            self.t = None
+            if DEV == "cuda":
+                torch.cuda.empty_cache()
+            self.t, self.name = to_source(self.arrays[name]), name
+            print(f"  {name} spectrograms on: {self.t.device}", flush=True)
+        return self.t
 
 
 def train_cnn(X, y, cfg, epochs, seed=0, rows=None):
@@ -205,6 +222,8 @@ EXPERIMENTS = [
      {"channels": (32, 64, 128, 256), "specaug": True}, "2x channels (more capacity)"),
     ("E11", "WavLM-Base+ (pretrained, frozen) + own MLP", "mlp", "wavlm", True, {},
      "self-supervised speech features (reused) + our classifier"),
+    ("E13", "VoxCNN-wide (own) on linear-frequency spectrogram + aug", "cnn", "lin", True,
+     {"channels": (32, 64, 128, 256), "specaug": True}, "linear bands keep high-frequency TTS/vocoder artefacts (LFCC front-end)"),
 ]
 
 
@@ -225,16 +244,17 @@ def main():
     hc, y, group, file_, aug = d["hc"], d["y"], d["group"], d["file_id"], d["aug"]
     lang, attack = d["lang"], d["attack"]
     mel = np.load(os.path.join(proc, "mel.npy"), mmap_mode="r")   # memory-mapped: no extra RAM copy
-    mel_src = to_source(mel) if not a.reselect else mel            # whole array on the GPU if it fits
-    print(f"spectrograms on: {mel_src.device if torch.is_tensor(mel_src) else 'cpu (memory-mapped)'}")
     rec = file_.astype(np.int64) * 100 + aug
+    lin_path = os.path.join(proc, "lin.npy")
+    lin = np.load(lin_path, mmap_mode="r") if os.path.exists(lin_path) else None
+    specs = Specs({"mel": mel, "lin": lin})
     emb_src = None
     if os.path.exists(os.path.join(proc, "wavlm.npy")) and not a.reselect:
         emb_src = to_source(np.load(os.path.join(proc, "wavlm.npy")))
         print(f"WavLM features {tuple(emb_src.shape)} on: {emb_src.device}")
     if a.reselect:
         c = joblib.load(os.path.join(ROOT, "results", "cv_cache.joblib"))
-        return finish(c["rows"], c["oof"], c["k"], a, data=(mel, hc, y, aug, file_, rec, lang, attack))
+        return finish(c["rows"], c["oof"], c["k"], a, data=(mel, hc, y, aug, file_, rec, lang, attack), srcs=specs)
     print(f"windows={len(y)}  files={len(np.unique(file_))}  human={int((y == 0).sum())}  ai={int((y == 1).sum())}"
           f"  device={DEV}")
 
@@ -272,6 +292,11 @@ def main():
         if kind == "mlp" and emb_src is None:
             print(f"{eid} skipped (no dataset/processed/wavlm.npy)")
             continue
+        if feat == "lin" and lin is None:
+            print(f"{eid} skipped (no dataset/processed/lin.npy)")
+            continue
+        spec_src = None                                   # drop the old reference so Specs can free GPU memory
+        spec_src = specs.get(feat) if kind == "cnn" else None
         t0 = time.time()
         fold_m, ys, ps, fps, rs = [], [], [], [], []
         for tr, te in folds:
@@ -286,8 +311,8 @@ def main():
                 m = train_mlp(emb_src, y[tr], a.epochs, rows=tr)
                 p = predict_mlp(m, emb_src, rows=te)
             else:
-                m = train_cnn(mel_src, y[tr], cfg, a.epochs, rows=tr)
-                p = predict_cnn(m, mel_src, rows=te)
+                m = train_cnn(spec_src, y[tr], cfg, a.epochs, rows=tr)
+                p = predict_cnn(m, spec_src, rows=te)
             fps.append(p)
             yr, pr = per_recording(p, rec[te], y[te])
             fold_m.append(metrics(yr, pr))
@@ -322,16 +347,17 @@ def main():
         rows.append(row)
         print(f"{eid} {name:38s} acc={res['acc']:.3f} f1={res['f1']:.3f} auc={res['auc']:.3f} "
               f"EER={res['eer']:.3f}±{res_std['eer']:.3f}  EER(uz/en/ru)={eer_focus:.3f}  "
-              f"EER(top-half)={eer_top:.3f}  ({row['train_s']}s)")
+              f"EER(top-half)={eer_top:.3f}  ({row['train_s']}s)", flush=True)
 
-    # ---------------- ensembles = mean probability of two models (no extra training)
+    spec_src = None
+    # ---------------- ensembles = mean probability of the members (no extra training)
     best_of = lambda kind: min((r for r in rows if r["kind"] == kind and r["feat"] != "majority"
                                 and not np.isnan(r["eer"])), key=lambda r: r["eer"], default=None)
 
-    def ensemble(eid, r1, r2, changed):
+    def ensemble(eid, members, changed):
         fold_m, ys, ps, rs, fps = [], [], [], [], []
-        for (tr, te), p1, p2 in zip(folds, fold_p[r1["id"]], fold_p[r2["id"]]):
-            fps.append((p1 + p2) / 2)
+        for f_i, (tr, te) in enumerate(folds):
+            fps.append(np.mean([fold_p[r_["id"]][f_i] for r_ in members], axis=0))
             yr, pr = per_recording(fps[-1], rec[te], y[te])
             fold_m.append(metrics(yr, pr)); ys.append(yr); ps.append(pr); rs.append(np.unique(rec[te]))
         fold_p[eid] = fps
@@ -340,25 +366,30 @@ def main():
                                     for p_, (_, te_) in zip(fps, folds)]))
         oof[eid] = (np.concatenate(ys), np.concatenate(ps), np.concatenate(rs))
         eer_focus = focus_eer(fps)
-        rows.append(dict(id=eid, approach=f"Ensemble {r1['id']} + {r2['id']}", changed=changed, eer_focus=eer_focus,
-                         acc=res["acc"], f1=res["f1"], auc=res["auc"], eer=res["eer"],
+        rows.append(dict(id=eid, approach="Ensemble " + " + ".join(r_["id"] for r_ in members), changed=changed,
+                         eer_focus=eer_focus, acc=res["acc"], f1=res["f1"], auc=res["auc"], eer=res["eer"],
                          eer_std=float(np.nanstd([f["eer"] for f in fold_m])), eer_top=eer_top,
-                         params=f"{r1['params']} + {r2['params']}",
-                         ms_per_window=round(r1["ms_per_window"] + r2["ms_per_window"], 2),
-                         train_s=0, kind="ens", feat="ens", use_aug=True, cfg={}, members=[r1, r2]))
+                         params=" + ".join(str(r_["params"]) for r_ in members),
+                         ms_per_window=round(sum(r_["ms_per_window"] for r_ in members), 2),
+                         train_s=0, kind="ens", feat="ens", use_aug=True, cfg={}, members=list(members)))
         r = rows[-1]
         print(f"{eid} {r['approach']:38s} acc={r['acc']:.3f} f1={r['f1']:.3f} auc={r['auc']:.3f} "
               f"EER={r['eer']:.3f}  EER(uz/en/ru)={eer_focus:.3f}  EER(top-half)={eer_top:.3f}")
 
-    sk_r, cnn_r, mlp_r = best_of("sk"), best_of("cnn"), best_of("mlp")
+    sk_r, mlp_r = best_of("sk"), best_of("mlp")
+    cnn_r = min((r for r in rows if r["kind"] == "cnn" and r["feat"] == "mel" and not np.isnan(r["eer"])),
+                key=lambda r: r["eer"], default=None)            # best mel CNN (keeps E9 / E12 comparable to before)
+    lin_r = next((r for r in rows if r["kind"] == "cnn" and r["feat"] == "lin"), None)
     if sk_r and cnn_r:
-        ensemble("E9", sk_r, cnn_r, "average of best classical + best CNN")
+        ensemble("E9", [sk_r, cnn_r], "average of best classical + best CNN")
     if cnn_r and mlp_r:
-        ensemble("E12", cnn_r, mlp_r, "average of our CNN + WavLM classifier")
+        ensemble("E12", [cnn_r, mlp_r], "average of our CNN + WavLM classifier")
+    if cnn_r and lin_r and mlp_r:
+        ensemble("E14", [cnn_r, lin_r, mlp_r], "average of mel CNN + linear-spectrogram CNN + WavLM classifier")
 
     os.makedirs(os.path.join(ROOT, "results"), exist_ok=True)
     joblib.dump({"rows": rows, "oof": oof, "k": k}, os.path.join(ROOT, "results", "cv_cache.joblib"))
-    finish(rows, oof, k, a, data=(mel, hc, y, aug, file_, rec, lang, attack), emb=emb_src, mel_dev=mel_src)
+    finish(rows, oof, k, a, data=(mel, hc, y, aug, file_, rec, lang, attack), emb=emb_src, srcs=specs)
 
 
 def _sel_eer(r):
@@ -406,7 +437,7 @@ def breakdown(yb, pb, rb, rec, lang, attack):
     return md
 
 
-def finish(rows, oof, k, a, data, emb=None, mel_dev=None):
+def finish(rows, oof, k, a, data, emb=None, srcs=None):
     mel, hc, y, aug, file_, rec, lang, attack = data
     best, min_eer = select(rows, a.tol)
     why = (f"lowest EER on uz/en/ru = {_sel_eer(best):.3f}" if _sel_eer(best) == min_eer else
@@ -473,10 +504,9 @@ def finish(rows, oof, k, a, data, emb=None, mel_dev=None):
             torch.save({"kind": "mlp", "dim": ssl.DIM, "ssl": ssl.MODEL_ID, "layers": list(ssl.LAYERS),
                         "state_dict": m.cpu().state_dict()}, path)
         else:
-            src = mel_dev if mel_dev is not None else mel
-            m = train_cnn(src, y[idx], r["cfg"], a.epochs, rows=idx)
+            m = train_cnn(srcs.get(r["feat"]), y[idx], r["cfg"], a.epochs, rows=idx)
             path = os.path.join(ROOT, "models", f"voxcheck_model{suffix}.pt")
-            torch.save({"state_dict": m.cpu().state_dict(), "channels": list(r["cfg"]["channels"])}, path)
+            torch.save({"state_dict": m.cpu().state_dict(), "channels": list(r["cfg"]["channels"]), "feat": r["feat"]}, path)
         print(f"Saved -> {path}")
         return os.path.basename(path), int(len(idx))
 
