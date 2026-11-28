@@ -145,6 +145,10 @@ including **18 AI voices played from a phone into the app**, 62 live recordings 
 Our own VoxCNN (P1) beat the WavLM version (P2): **EER 12.5% on real recordings**, and **85.7% of the phone→mic AI clips are flagged** (out-of-fold).
 Before a data bug was fixed, it flagged only 44.4% of them. It accepts 86% of live voices.
 In the app, a **microphone** recording that sounds played-back is shown as "Suspicious — voice played from a device".
+Only a clear playback score (≥ 70%) overrides a human verdict. Between 50% and 70% the verdict stays *human* with a softer
+"maybe played from a device" note, because live voices in a new room often score near 50% (the detector learned "live" from
+few speakers). Pressing **It was a human** after a microphone recording saves the clip as a live voice for the next
+`train_playback.py` run.
 **Limitation:** the phone→mic clips come from a few phones in one room, so more phones, distances and rooms are the next step.
 Also, 55 of the live clips are one team member. Each take is its own CV group, so that voice and room appear in both
 train and test folds, and the 12.5% EER is likely optimistic. Live recordings from more people will fix this.

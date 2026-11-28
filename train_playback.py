@@ -141,8 +141,10 @@ def main():
               and os.path.basename(f).split("__")[-1].split("-")[0] not in (MANIPULATIONS - {"feedback"})
               and is_mic_feedback(f)]
     real = [f for f in allf if "__replay-" in f] + mic_ai
+    # live voices: team mic recordings, plus "It was a human" feedback recorded with the microphone in the app
+    # (tagged feedback-mic-*; untagged / uploaded feedback files are not used, they may never have been spoken live)
     live = [f for f in files["human"] if os.path.basename(f).startswith(("me-", "human_")) and "__replay-" not in f
-            and "__feedback-" not in f]
+            and ("__feedback-" not in f or "__feedback-mic-" in f)]
     rest = [f for f in allf if f not in set(real) and f not in set(live)]
     sample = rnd.sample(rest, min(a.sample, len(rest)))
     print(f"real replays {len(real)} | live mic recordings {len(live)} | sampled for simulation {len(sample)}")

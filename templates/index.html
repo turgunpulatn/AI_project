@@ -438,6 +438,7 @@ const I18N = {
   conf: "Confidence: {c}", c_high: "high", c_medium: "medium", c_low: "low", dur: "{s} s audio", lat: "{ms} ms",
   bar_ai: "AI", bar_human: "Human", bar_pb: "Playback",
   pbwarn: "<b>Played from a device.</b> This voice sounds like it comes from a phone, laptop or speaker, not spoken live. In a call or a voice check, that's a typical sign of a fake.",
+  pbweak: "<b>Maybe played from a device (weak signal).</b> The voice itself sounds human. The playback check is unsure, which often happens with a new room, distance or microphone. If you spoke live, press <i>It was a human</i>.",
   tl_title: "AI probability over time", tl_sub: "each bar = 2 s window",
   unsure_note: "The model isn't sure. Try a longer clip (5–15 s) of clear speech without music.",
   fb_q: "Wrong answer? Teach the model:", fb_ai: "It was AI", fb_human: "It was a human",
@@ -492,6 +493,7 @@ const I18N = {
   conf: "Ishonch: {c}", c_high: "yuqori", c_medium: "o'rtacha", c_low: "past", dur: "{s} s audio", lat: "{ms} ms",
   bar_ai: "SI", bar_human: "Inson", bar_pb: "Qurilma",
   pbwarn: "<b>Qurilmadan ijro etilgan.</b> Bu ovoz jonli gapirilmagan — telefon, noutbuk yoki karnaydan eshitilmoqda. Qo'ng'iroq yoki ovozli tekshiruvda bu soxtalikning odatiy belgisi.",
+  pbweak: "<b>Ehtimol qurilmadan ijro etilgan (kuchsiz belgi).</b> Ovozning o'zi inson ovoziga o'xshaydi. Ijro tekshiruvi ishonchsiz — bu ko'pincha yangi xona, masofa yoki mikrofonda bo'ladi. Agar jonli gapirgan bo'lsangiz, <i>Bu odam edi</i> tugmasini bosing.",
   tl_title: "Vaqt bo'yicha SI ehtimoli", tl_sub: "har bir ustun = 2 s",
   unsure_note: "Model ishonchsiz. Musiqasiz, aniq nutqdan iborat uzunroq (5–15 s) yozuv bilan urinib ko'ring.",
   fb_q: "Javob noto'g'rimi? Modelni o'rgating:", fb_ai: "Bu SI edi", fb_human: "Bu odam edi",
@@ -546,6 +548,7 @@ const I18N = {
   conf: "Уверенность: {c}", c_high: "высокая", c_medium: "средняя", c_low: "низкая", dur: "{s} с аудио", lat: "{ms} мс",
   bar_ai: "ИИ", bar_human: "Человек", bar_pb: "С устройства",
   pbwarn: "<b>Воспроизведено с устройства.</b> Голос звучит из телефона, ноутбука или колонки, а не вживую. В звонке или голосовой проверке это типичный признак подделки.",
+  pbweak: "<b>Возможно, воспроизведено с устройства (слабый признак).</b> Сам голос звучит как человеческий. Проверка воспроизведения не уверена — так часто бывает в новой комнате, на другом расстоянии или с другим микрофоном. Если вы говорили вживую, нажмите <i>Это был человек</i>.",
   tl_title: "Вероятность ИИ во времени", tl_sub: "каждый столбец = 2 с",
   unsure_note: "Модель не уверена. Попробуйте запись подлиннее (5–15 с) с чистой речью без музыки.",
   fb_q: "Ответ неверный? Научите модель:", fb_ai: "Это был ИИ", fb_human: "Это был человек",
@@ -882,10 +885,14 @@ $("analyze").onclick = async () => {
   }
 };
 
+const PB_STRONG = 70;
 function paintVerdict(d) {
   const isAi = d.prediction !== "Human", unsure = d.confidence === "low";
+  // The playback detector learned "live voice" from few speakers and rooms, so scores near 50% are weak evidence:
+  // only a clear score (>= PB_STRONG) overrides a human verdict; 50-70% shows a softer note instead.
   const pb = d.playback, played = pb !== null && pb !== undefined && pb >= 50;
-  const playedMic = played && d._mic && !isAi;
+  const strong = played && pb >= PB_STRONG;
+  const playedMic = strong && d._mic && !isAi;
   const kind = playedMic || unsure ? "warn" : isAi ? "ai" : "human";
   $("stamp").className = "stamp " + kind;
   $("stamp").textContent = t(playedMic ? "stamp_warn" : unsure ? "stamp_unsure" : isAi ? "stamp_ai" : "stamp_human");
@@ -895,7 +902,7 @@ function paintVerdict(d) {
   $("lat").textContent = t("lat", {ms: d.latency_ms});
   $("unsureNote").textContent = unsure ? t("unsure_note") : "";
   $("gnum").style.color = `var(--${kind})`;
-  $("pbwarn").innerHTML = t("pbwarn");
+  $("pbwarn").innerHTML = t(strong || isAi ? "pbwarn" : "pbweak");
   return {kind, played, pb};
 }
 
