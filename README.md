@@ -230,9 +230,10 @@ VoxCheck/
 | `voxcheck/meta.py` | file-name conventions → group, language, attack type |
 | `voxcheck/detector.py` | loads the saved models once, scores 2 s windows, returns probability + timeline |
 | `scripts/import_*.py`, `scripts/generate_ai.py`, `scripts/make_fakes.py` | data collection / generation |
-| `scripts/prepare_data.py` | decode → silence removal → loudness norm → augmentation → windows → log-mel + 99 features (streamed to disk) |
+| `scripts/prepare_data.py` | decode → silence removal → loudness norm → augmentation → windows → log-mel, linear spectrogram, WavLM and 99 features (streamed to disk) |
+| `scripts/holdout_eval.py`, `scripts/unseen_eval.py` | holdout test and the unseen voices / speakers test |
 | `scripts/share.ps1` | temporary public HTTPS link so classmates can record (see *Working as a team*) |
-| `results/` | `experiments.md`, `mic_channel.md`, `playback.md`, `data_report.md`, ROC + preprocessing figures, `training_log.txt` |
+| `results/` | `experiments.md`, `mic_channel.md`, `playback.md`, `data_report.md`, `unseen_voices.md`, ROC + preprocessing figures, `training_log.txt` (log of the run behind the current model) |
 
 ## Reused (disclosed)
 
