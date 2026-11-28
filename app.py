@@ -1,6 +1,7 @@
 """VoxCheck web demo.   Run:  python app.py   ->  http://127.0.0.1:5000   (python app.py --port 5050 for another port)"""
 import hmac
 import logging
+import math
 import os
 import re
 import socket
@@ -256,6 +257,15 @@ def about():
     playback = json.load(open(ppath)) if os.path.exists(ppath) else None
     hpath = os.path.join(res, "holdout_comparison.json")
     holdout = json.load(open(hpath)) if os.path.exists(hpath) else None
+    def clean(x):          # NaN / inf are not valid JSON: the browser would reject the whole response
+        if isinstance(x, float) and not math.isfinite(x):
+            return None
+        if isinstance(x, dict):
+            return {k: clean(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [clean(v) for v in x]
+        return x
+    breakdown, playback, holdout = clean(breakdown), clean(playback), clean(holdout)
     return jsonify({"experiments": exps, "data": data, "breakdown": breakdown, "playback": playback, "holdout": holdout,
                     "selected": detector.meta.get("id") if detector else None,
                     "roc": os.path.exists(os.path.join(res, "roc_best.png")),

@@ -11,7 +11,7 @@
   "acc human": 1.0,
   "acc ai-tts": 1.0,
   "acc ai-vc": 0.9743589743589743,
-  "acc ai-xtts": NaN,
+  "acc ai-xtts": null,
   "folder": "../models_backup_1127"
  },
  {
@@ -26,7 +26,7 @@
   "acc human": 1.0,
   "acc ai-tts": 1.0,
   "acc ai-vc": 0.9743589743589743,
-  "acc ai-xtts": NaN,
+  "acc ai-xtts": null,
   "folder": "models"
  }
 ]

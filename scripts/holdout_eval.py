@@ -136,4 +136,5 @@ if __name__ == "__main__":
         rows.append(r)
         print(json.dumps({k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()}, ensure_ascii=False))
     if rows:
+        rows = [{k: (None if isinstance(v, float) and v != v else v) for k, v in r.items()} for r in rows]   # NaN -> null
         json.dump(rows, open(os.path.join(ROOT, "results", "holdout_comparison.json"), "w"), indent=1)

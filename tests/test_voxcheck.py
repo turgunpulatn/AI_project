@@ -91,6 +91,8 @@ def test_app_endpoints():
     assert c.get("/").status_code == 200
     assert c.get("/stats").status_code == 200
     assert c.get("/about").status_code == 200
+    import json   # strict JSON: a NaN in a results file must not break the "How it works" tab in the browser
+    json.loads(c.get("/about").get_data(as_text=True), parse_constant=lambda x: (_ for _ in ()).throw(ValueError(x)))
     assert c.get("/results/../app.py").status_code == 404
     r = c.post("/analyze", data={"audio": (io.BytesIO(_wav_bytes(_tone(4))), "t.wav")},
                content_type="multipart/form-data")
