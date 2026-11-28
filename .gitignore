@@ -21,3 +21,7 @@ venv/
 .claude/
 .vscode/
 .idea/
+
+# ---- playback retrains that were not good enough (see train_playback.py) ----
+models/playback_candidate*
+results/playback_candidate.md

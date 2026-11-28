@@ -16,7 +16,8 @@ Models compared (grouped 5-fold CV, groups = source recording / speaker):
 Reported separately on the REAL subset (real replays vs live mic recordings), which is what matters.
 
   python train_playback.py
-Output: models/playback.pt, results/playback.md
+Output: models/playback.pt, results/playback.md. A model that is worse than the one in use (or above the EER
+limit) is saved as models/playback_candidate.pt + results/playback_candidate.md instead, never replacing it.
 """
 import json
 import os
@@ -127,6 +128,7 @@ def main():
     ap.add_argument("--sample", type=int, default=2500, help="recordings sampled from the big dataset for simulation")
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--force", action="store_true", help="replace models/playback.pt even if the new model is worse")
     ap.add_argument("--max-real-eer", type=float, default=0.20,
                     help="only enable the detector in the app if its EER on REAL recordings is below this")
     a = ap.parse_args()
@@ -204,11 +206,23 @@ def main():
     print("selected:", best_name)
     real_eer = res[best_name][1].get("real_eer", 1.0)
     enabled = real_eer < a.max_real_eer
-    out_name = "playback.pt" if enabled else "playback_candidate.pt"
-    print(f"real-recording EER {real_eer:.3f} -> {'ENABLED in app' if enabled else 'NOT enabled (saved as candidate)'}")
-    for stale in ("playback_candidate.pt", "playback.pt"):
-        if stale != out_name and os.path.exists(os.path.join(ROOT, "models", stale)):
-            os.remove(os.path.join(ROOT, "models", stale))
+    # never throw away a working detector for a worse one: the app keeps the current playback.pt unless the new
+    # model is enabled AND at least as good on real recordings (or --force)
+    cur_path = os.path.join(ROOT, "models", "playback_meta.json")
+    cur = json.load(open(cur_path)) if os.path.exists(cur_path) else {}
+    cur_ok = bool(cur.get("enabled")) and os.path.exists(os.path.join(ROOT, "models", "playback.pt"))
+    replace = enabled and (a.force or not cur_ok or real_eer <= cur.get("real_eer", 1.0))
+    out_name = "playback.pt" if replace else "playback_candidate.pt"
+    tag = "" if replace else "_candidate"
+    why = (f"above the {a.max_real_eer:.2f} limit" if not enabled else
+           f"worse than the model in use ({cur.get('real_eer', 1.0):.3f})")
+    if replace:
+        print(f"real-recording EER {real_eer:.3f} -> ENABLED in app (models/playback.pt)")
+    else:
+        print(f"real-recording EER {real_eer:.3f} is {why} -> saved as models/playback_candidate.pt; "
+              f"{'the current models/playback.pt stays in use' if cur_ok else 'no playback warning in the app'}")
+    if replace and os.path.exists(os.path.join(ROOT, "models", "playback_candidate.pt")):
+        os.remove(os.path.join(ROOT, "models", "playback_candidate.pt"))
     rows = np.arange(len(Y))
     if kind == "cnn":
         m = T.train_cnn(mel_src, Y, {"channels": (16, 32, 64, 128), "specaug": True}, a.epochs, rows=rows)
@@ -221,9 +235,9 @@ def main():
     meta = {"approach": best_name, "trained_at": time.strftime("%Y-%m-%d %H:%M"), "enabled": bool(enabled),
             "real_eer": real_eer, "threshold_real_eer": a.max_real_eer,
             "n_real_replays": len(real), "n_live": len(live), "results": {n: r for n, (_, r) in res.items()}}
-    json.dump(meta, open(os.path.join(ROOT, "models", "playback_meta.json"), "w"), indent=2)
+    json.dump(meta, open(os.path.join(ROOT, "models", f"playback{tag}_meta.json"), "w"), indent=2)
 
-    md = ["# Playback (replay) detector", "",
+    md = ["# Playback (replay) detector" + (" - candidate, NOT used by the app" if tag else ""), "",
           f"Data: {len(real)} real replays recorded through a speaker into this laptop's mic ({len(mic_ai)} of them AI "
           f"voices played from a phone/laptop into the app), {len(live)} live microphone recordings, "
           f"{len(sample)} recordings with simulated phone / laptop-speaker replay. 5-fold CV grouped by source.", "",
@@ -235,10 +249,10 @@ def main():
                   f"{r.get('real_eer', float('nan')):.3f} | {f('real_live_ok')} | {f('real_replay_caught')} | "
                   f"{f('phone_mic_caught')} ({r.get('phone_mic_clips', 0)} clips) |")
     md += ["", f"Selected: **{best_name}**. EER on real recordings {real_eer:.3f}: "
-           + ("below the 0.20 threshold, so the detector is **enabled** in the app." if enabled else
-              "above the 0.20 threshold, so it is **not enabled** (kept as models/playback_candidate.pt). "
-              "More live and replay recordings are needed.")]
-    open(os.path.join(ROOT, "results", "playback.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+           + ("below the 0.20 threshold, so the detector is **enabled** in the app." if replace else
+              why + ", so it is **not used** (kept as models/playback_candidate.pt; the app keeps "
+              "models/playback.pt if there is one). More live and replay recordings are needed.")]
+    open(os.path.join(ROOT, "results", f"playback{tag}.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
     print("\n".join(md))
 
 

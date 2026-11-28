@@ -157,8 +157,10 @@ through a speaker, so the app now tags feedback as `feedback-mic-*` or `feedback
 
 **Before retraining the playback detector, record more replays.** The model in `models/` was trained on 148 real replays.
 Only 37 replay recordings plus 22 phone clips are left in `dataset/`; the others were removed in the uz/en/ru cleanup.
-A test retrain on that data on 2026-11-28 reached only 23.4% EER on real recordings. That is above the 20% limit, so
-`train_playback.py` would switch the warning off in the app. Run `scripts/record_replay.py` and record phone→mic clips first.
+Retrains on that data on 2026-11-28 reached only 23.9–24.5% EER on real recordings, above the 20% limit.
+`train_playback.py` never replaces a working `models/playback.pt` with a worse model: it saves it as
+`models/playback_candidate.pt` (report in `results/playback_candidate.md`, not in git) and the app keeps the old one.
+Run `scripts/record_replay.py`, record phone→mic clips and live voices first.
 
 ### Known limitations of the evaluation
 * FLEURS has no speaker IDs, so human FLEURS clips are grouped by **sentence**. The same FLEURS speaker can be in both
